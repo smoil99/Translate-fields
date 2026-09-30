@@ -62,9 +62,11 @@
 
   /* ---------- верхняя навигация ЛК ---------- */
   .topnav{position:sticky; top:env(safe-area-inset-top,0px); z-index:35;
-    background:var(--glass);
+    background:transparent; border-bottom:1px solid transparent; padding:0 clamp(16px,4vw,40px);
+    transition:background .22s ease, border-color .22s ease}
+  body.scrolled .topnav{background:var(--glass);
     -webkit-backdrop-filter:blur(16px) saturate(1.4); backdrop-filter:blur(16px) saturate(1.4);
-    border-bottom:1px solid var(--line); padding:0 clamp(16px,4vw,40px)}
+    border-bottom-color:var(--line)}
   .topnav-in{max-width:1240px; margin:0 auto; height:54px; display:flex; align-items:center; gap:26px}
   .brand-links{display:flex; gap:22px; align-items:center}
   .brand-links a{display:flex; align-items:center; gap:7px; color:var(--muted); font-weight:500; font-size:13.5px}
@@ -78,9 +80,11 @@
 
   /* ---------- шапка ЛК: залипает при скролле + glassmorphism ---------- */
   .lk-header{position:sticky; top:calc(var(--topnav-h,54px) + env(safe-area-inset-top,0px)); z-index:30;
-    background:var(--glass);
+    background:transparent; box-shadow:none;
+    transition:background .22s ease, box-shadow .22s ease}
+  body.scrolled .lk-header{background:var(--glass);
     -webkit-backdrop-filter:blur(16px) saturate(1.4); backdrop-filter:blur(16px) saturate(1.4);
-    border-bottom:1px solid var(--line); box-shadow:0 10px 30px -20px rgba(0,0,0,.75)}
+    box-shadow:0 12px 34px -22px rgba(0,0,0,.8)}
   .lk-header-in{max-width:1240px; margin:0 auto; padding:16px clamp(16px,4vw,40px) 0}
   .crumbs{font-size:12.5px; color:var(--muted); margin-bottom:12px}
   .crumbs b{color:var(--muted); font-weight:400}
@@ -606,8 +610,17 @@ function setHarnessH(){
 }
 window.addEventListener("resize", setHarnessH);
 
+/* стекло + тень у шапки только когда она закрепилась (плашка «Прототип» ушла вверх) */
+function onScroll(){
+  const h = document.querySelector(".harness").offsetHeight;
+  document.body.classList.toggle("scrolled", window.scrollY > h - 2);
+}
+window.addEventListener("scroll", onScroll, {passive:true});
+window.addEventListener("resize", onScroll);
+
 render();
 setHarnessH();
+onScroll();
 </script>
 </body>
 </html>
