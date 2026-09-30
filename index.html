@@ -73,36 +73,44 @@
   .who .nm{font-size:13px;font-weight:600;line-height:1.1}
   .who .rl{font-size:11px;color:var(--muted)}
 
-  /* ---------- контейнер страницы ---------- */
-  .wrap{max-width:1240px; margin:0 auto; padding:22px clamp(16px,4vw,40px) 60px}
-  .crumbs{font-size:12.5px; color:var(--muted); margin-bottom:14px}
+  /* ---------- шапка ЛК: залипает при скролле + glassmorphism ---------- */
+  .lk-header{position:sticky; top:var(--harness-h,0px); z-index:30;
+    background:rgba(10,21,29,.66);
+    -webkit-backdrop-filter:blur(16px) saturate(1.4); backdrop-filter:blur(16px) saturate(1.4);
+    border-bottom:1px solid var(--line); box-shadow:0 10px 30px -20px rgba(0,0,0,.75)}
+  .lk-header-in{max-width:1240px; margin:0 auto; padding:16px clamp(16px,4vw,40px) 0}
+  .crumbs{font-size:12.5px; color:var(--muted); margin-bottom:12px}
   .crumbs b{color:var(--muted); font-weight:400}
   .head{display:flex; align-items:center; gap:14px; flex-wrap:wrap}
-  h1{font-size:clamp(24px,3.4vw,32px); font-weight:600; letter-spacing:-.5px; margin:0; text-wrap:balance}
+  h1{font-size:clamp(22px,3vw,30px); font-weight:600; letter-spacing:-.5px; margin:0; text-wrap:balance}
   .status-pill{display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:500;
     color:var(--accent); border:1px solid rgba(97,199,214,.4); background:rgba(97,199,214,.08);
     padding:4px 11px; border-radius:20px}
   .status-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
-  .meta{display:flex; flex-wrap:wrap; gap:20px; margin-top:12px; color:var(--muted); font-size:13px}
+  .meta{display:flex; flex-wrap:wrap; gap:20px; margin-top:10px; color:var(--muted); font-size:13px}
   .meta span{display:inline-flex; gap:6px; align-items:center}
-  .tabs{display:flex; gap:26px; margin-top:20px; border-bottom:1px solid var(--line)}
+  .tabs{display:flex; gap:26px; margin-top:16px; border-bottom:1px solid var(--line)}
   .tabs button{appearance:none;border:0;background:0;font-family:inherit;color:var(--muted);
     font-size:14px;font-weight:500;padding:0 0 12px;cursor:pointer;position:relative}
   .tabs button.active{color:#fff}
   .tabs button.active::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--primary)}
 
-  /* ---------- header-pattern toggle bar ---------- */
-  .langbar{display:none; margin-top:16px; align-items:center; gap:12px; flex-wrap:wrap;
-    background:var(--primary-dim); border:1px solid rgba(7,187,178,.28); border-radius:12px; padding:10px 14px}
-  .langbar.show{display:flex}
-  .langbar .txt{font-size:12.5px; color:#cfeeeb; flex:1 1 200px; min-width:0}
-  .switch{position:relative; display:inline-flex; align-items:center; gap:9px; cursor:pointer; user-select:none}
-  .switch input{position:absolute;opacity:0;width:0;height:0}
-  .track{width:38px;height:22px;border-radius:12px;background:rgba(255,255,255,.16);transition:.15s;flex:none}
-  .knob{position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s}
-  .switch input:checked + .track{background:var(--primary)}
-  .switch input:checked + .track + .knob{transform:translateX(16px)}
-  .switch .sw-lbl{font-size:12.5px;font-weight:600;color:#fff;white-space:nowrap}
+  /* тумблер «Показать англ. версию» — в строке заголовка справа */
+  .head-toggle{margin-left:auto}
+  @media (max-width:560px){ .head-toggle{margin-left:0} }
+  .switch{display:inline-flex; align-items:center; gap:9px; cursor:pointer; user-select:none}
+  .switch .sw-lbl{font-size:13px; font-weight:500; color:#dbeaec; white-space:nowrap}
+  .sw-box{position:relative; width:38px; height:22px; flex:none}
+  .sw-box input{position:absolute; opacity:0; width:0; height:0; margin:0}
+  .track{position:absolute; inset:0; border-radius:12px; background:rgba(255,255,255,.18); transition:.15s}
+  .knob{position:absolute; left:3px; top:3px; width:16px; height:16px; border-radius:50%; background:#fff; transition:.15s}
+  .sw-box input:checked ~ .track{background:var(--primary)}
+  .sw-box input:checked ~ .knob{transform:translateX(16px)}
+  .sw-box input:focus-visible ~ .track{outline:2px solid var(--accent); outline-offset:2px}
+  [hidden]{display:none!important}
+
+  /* ---------- контейнер контента ---------- */
+  .wrap{max-width:1240px; margin:0 auto; padding:0 clamp(16px,4vw,40px) 60px}
 
   /* ---------- сетка контента ---------- */
   .grid{display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:22px; margin-top:22px; align-items:start}
@@ -248,33 +256,33 @@
   </div>
 </nav>
 
+<!-- ============ ЗАЛИПАЮЩАЯ ШАПКА ЛК ============ -->
+<header class="lk-header">
+  <div class="lk-header-in">
+    <div class="crumbs"><b data-i="nav_req">Заявки</b> / <span data-i="req_title">Электросварщик ручной сварки</span></div>
+    <div class="head">
+      <h1 data-i="req_title">Электросварщик ручной сварки</h1>
+      <span class="status-pill"><span class="dot"></span><span data-i="status">В работе</span></span>
+      <label class="switch head-toggle" id="headToggleWrap" hidden>
+        <span class="sw-lbl" id="headerToggleLbl">Показать англ. версию</span>
+        <span class="sw-box"><input type="checkbox" id="headerToggle"><span class="track"></span><span class="knob"></span></span>
+      </label>
+    </div>
+    <div class="meta">
+      <span data-i="m_grade">Разряд 5–6</span>
+      <span data-i="m_count">Количество 25 чел.</span>
+      <span data-i="m_city">Москва</span>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="active" data-i="tab_overview">Обзор</button>
+      <button data-i="tab_cand">Кандидаты</button>
+      <button data-i="tab_serv">Услуги</button>
+      <button data-i="tab_docs">Документы</button>
+    </div>
+  </div>
+</header>
+
 <div class="wrap">
-  <div class="crumbs"><b data-i="nav_req">Заявки</b> / <span data-i="req_title">Электросварщик ручной сварки</span></div>
-  <div class="head">
-    <h1 data-i="req_title">Электросварщик ручной сварки</h1>
-    <span class="status-pill"><span class="dot"></span><span data-i="status">В работе</span></span>
-  </div>
-  <div class="meta">
-    <span data-i="m_grade">Разряд 5–6</span>
-    <span data-i="m_count">Количество 25 чел.</span>
-    <span data-i="m_city">Москва</span>
-  </div>
-  <div class="tabs" role="tablist">
-    <button class="active" data-i="tab_overview">Обзор</button>
-    <button data-i="tab_cand">Кандидаты</button>
-    <button data-i="tab_serv">Услуги</button>
-    <button data-i="tab_docs">Документы</button>
-  </div>
-
-  <div class="langbar" id="langbar">
-    <span class="txt" id="langbarTxt"></span>
-    <label class="switch">
-      <input type="checkbox" id="headerToggle">
-      <span class="track"></span><span class="knob"></span>
-      <span class="sw-lbl" id="headerToggleLbl"></span>
-    </label>
-  </div>
-
   <div class="grid">
     <div class="main-panel" id="panel"></div>
 
@@ -448,32 +456,29 @@ function render(){
   // подсказка
   const hints = {
     "admin": "<b>Админ РРУ:</b> у каждого свободного поля рядом показаны оригинал и перевод — только просмотр, как в требованиях. Правки и подтверждения перевода здесь нет.",
-    "client-header": "<b>Клиент · хедер:</b> одна кнопка вверху переключает весь бланк на английскую версию (что видит провайдер). Минимум шума.",
+    "client-header": "<b>Клиент · хедер:</b> тумблер справа от заголовка переключает весь бланк на английскую версию (что видит провайдер). Минимум шума.",
     "client-inline": "<b>Клиент · инлайн:</b> под каждым свободным полем всегда виден чип «EN» — раскрывается на месте. Заметно и работает на тач.",
     "client-hover": "<b>Клиент · ховер:</b> кнопка появляется только при наведении → на тач недоступна и её не видно. Показано, почему это худший вариант.",
-    "provider-header": "<b>Провайдер · хедер:</b> одна кнопка вверху показывает оригинал (RU) поверх английского перевода.",
+    "provider-header": "<b>Провайдер · хедер:</b> тумблер справа от заголовка показывает оригинал (RU) поверх английского перевода.",
     "provider-inline": "<b>Провайдер · инлайн:</b> под каждым свободным полем всегда виден чип «RU-оригинал» — раскрывается на месте.",
     "provider-hover": "<b>Провайдер · ховер:</b> кнопка «оригинал» только по наведению — недоступна на тач, плохо заметна.",
   };
   document.getElementById("hint").innerHTML = role==="admin" ? hints.admin : hints[role+"-"+pattern];
 
-  // langbar (только header-паттерн у потребителя)
-  const lb = document.getElementById("langbar");
-  const showLangbar = isConsumer && pattern==="header";
-  lb.classList.toggle("show", showLangbar);
-  if(showLangbar){
-    document.getElementById("langbarTxt").textContent = role==="client"
-      ? "Заявка заполнена на русском. Можно посмотреть английскую версию, которую видит провайдер."
-      : "The request was filled in Russian. You can view the original text next to the translation.";
-    document.getElementById("headerToggleLbl").textContent = role==="client"
-      ? (headerShowOther?"Английская версия":"Показать английскую версию")
-      : (headerShowOther?"Original (RU)":"Show original (RU)");
+  // тумблер языка в строке заголовка (только header-паттерн у потребителя)
+  const tw = document.getElementById("headToggleWrap");
+  const showToggle = isConsumer && pattern==="header";
+  tw.hidden = !showToggle;
+  if(showToggle){
+    document.getElementById("headerToggleLbl").textContent =
+      role==="client" ? "Показать англ. версию" : "Показать ориг. (RU)";
     document.getElementById("headerToggle").checked = headerShowOther;
   }
 
   // панель секций
   document.getElementById("panel").innerHTML = SECTIONS.map(renderSection).join("");
   bind();
+  setHarnessH();
 }
 
 function renderSection(s){
@@ -591,7 +596,15 @@ document.querySelectorAll("#patternSeg button").forEach(b=>b.onclick=()=>{
 });
 document.getElementById("headerToggle").onchange=e=>{ headerShowOther=e.target.checked; triggerLoad(); };
 
+/* высота залипающей панели-харнесса → под неё уходит шапка ЛК */
+function setHarnessH(){
+  const h = document.querySelector(".harness").offsetHeight;
+  document.documentElement.style.setProperty("--harness-h", h + "px");
+}
+window.addEventListener("resize", setHarnessH);
+
 render();
+setHarnessH();
 </script>
 </body>
 </html>
