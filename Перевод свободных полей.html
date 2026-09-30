@@ -1,0 +1,589 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Перевод свободных полей</title>
+<meta name="description" content="Кликабельный прототип UX перевода свободнотекстовых полей заявки: роли, паттерны контрола, правка и подтверждение">
+<style>
+  /* Layout: тёмный ЛК заявки — крупная левая панель с секциями + правый сайдбар; сверху панель-харнесс прототипа */
+  :root{
+    color-scheme: dark;
+    --bg:#0a151d; --bg2:#0b1a24;
+    --panel:rgba(255,255,255,.025); --panel-solid:#0f2029;
+    --card:#12222c; --card2:#152833;
+    --line:rgba(255,255,255,.08); --line-strong:rgba(255,255,255,.14);
+    --text:#ffffff; --muted:#8b9aa3; --muted2:#66757e;
+    --primary:#07BBB2; --primary-dim:rgba(7,187,178,.14);
+    --accent:#61C7D6;
+    --st-machine:#61C7D6; --st-edited:#E5B34A; --st-confirmed:#3FBF87;
+    --st-stale:#E5734F; --st-pending:#E5B34A;
+    --radius:16px;
+    --f: "Commissioner", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:var(--f); color:var(--text);
+    background:
+      radial-gradient(1200px 480px at 78% -8%, rgba(7,187,178,.10), transparent 60%),
+      linear-gradient(180deg, var(--bg2), var(--bg) 340px);
+    background-attachment: fixed;
+    -webkit-font-smoothing:antialiased;
+    font-size:14px; line-height:1.45;
+  }
+  a{color:var(--primary); text-decoration:none}
+
+  /* ---------- харнесс прототипа ---------- */
+  .harness{
+    position:sticky; top:env(safe-area-inset-top,0px); z-index:40;
+    background:rgba(8,17,23,.92); backdrop-filter:blur(10px);
+    border-bottom:1px dashed rgba(7,187,178,.5);
+    padding:10px clamp(16px,4vw,40px);
+  }
+  .harness-row{display:flex; flex-wrap:wrap; align-items:center; gap:14px 22px; max-width:1240px; margin:0 auto}
+  .harness .tag{font-size:10px; letter-spacing:.14em; font-weight:600; color:var(--primary);
+    border:1px solid rgba(7,187,178,.5); border-radius:5px; padding:3px 8px; text-transform:uppercase}
+  .ctl{display:flex; align-items:center; gap:9px; min-width:0}
+  .ctl > span.lbl{font-size:11px; color:var(--muted); letter-spacing:.04em; white-space:nowrap}
+  .seg{display:inline-flex; background:rgba(255,255,255,.05); border:1px solid var(--line);
+    border-radius:9px; padding:3px}
+  .seg button{appearance:none; border:0; background:transparent; color:var(--muted);
+    font-family:inherit; font-size:12.5px; font-weight:500; padding:6px 11px; border-radius:6px;
+    cursor:pointer; white-space:nowrap; transition:.12s}
+  .seg button:hover{color:#fff}
+  .seg button[aria-pressed="true"]{background:var(--primary); color:#04231f; font-weight:600}
+  .seg.is-off{opacity:.4; pointer-events:none}
+  .hint{font-size:11.5px; color:var(--muted2); flex:1 1 240px; min-width:0}
+  .hint b{color:var(--muted); font-weight:500}
+
+  /* ---------- верхняя навигация ЛК ---------- */
+  .topnav{border-bottom:1px solid var(--line); padding:0 clamp(16px,4vw,40px)}
+  .topnav-in{max-width:1240px; margin:0 auto; height:54px; display:flex; align-items:center; gap:26px}
+  .brand-links{display:flex; gap:22px; align-items:center}
+  .brand-links a{display:flex; align-items:center; gap:7px; color:var(--muted); font-weight:500; font-size:13.5px}
+  .brand-links a.active{color:#fff}
+  .brand-links .ic{width:15px;height:15px;opacity:.75}
+  .who{margin-left:auto; display:flex; align-items:center; gap:10px}
+  .who .av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#1c3a44,#0f2129);
+    display:grid;place-items:center;color:var(--accent);font-size:12px}
+  .who .nm{font-size:13px;font-weight:600;line-height:1.1}
+  .who .rl{font-size:11px;color:var(--muted)}
+
+  /* ---------- контейнер страницы ---------- */
+  .wrap{max-width:1240px; margin:0 auto; padding:22px clamp(16px,4vw,40px) 60px}
+  .crumbs{font-size:12.5px; color:var(--muted); margin-bottom:14px}
+  .crumbs b{color:var(--muted); font-weight:400}
+  .head{display:flex; align-items:center; gap:14px; flex-wrap:wrap}
+  h1{font-size:clamp(24px,3.4vw,32px); font-weight:600; letter-spacing:-.5px; margin:0; text-wrap:balance}
+  .status-pill{display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:500;
+    color:var(--accent); border:1px solid rgba(97,199,214,.4); background:rgba(97,199,214,.08);
+    padding:4px 11px; border-radius:20px}
+  .status-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+  .meta{display:flex; flex-wrap:wrap; gap:20px; margin-top:12px; color:var(--muted); font-size:13px}
+  .meta span{display:inline-flex; gap:6px; align-items:center}
+  .tabs{display:flex; gap:26px; margin-top:20px; border-bottom:1px solid var(--line)}
+  .tabs button{appearance:none;border:0;background:0;font-family:inherit;color:var(--muted);
+    font-size:14px;font-weight:500;padding:0 0 12px;cursor:pointer;position:relative}
+  .tabs button.active{color:#fff}
+  .tabs button.active::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--primary)}
+
+  /* ---------- header-pattern toggle bar ---------- */
+  .langbar{display:none; margin-top:16px; align-items:center; gap:12px; flex-wrap:wrap;
+    background:var(--primary-dim); border:1px solid rgba(7,187,178,.28); border-radius:12px; padding:10px 14px}
+  .langbar.show{display:flex}
+  .langbar .txt{font-size:12.5px; color:#cfeeeb; flex:1 1 200px; min-width:0}
+  .switch{position:relative; display:inline-flex; align-items:center; gap:9px; cursor:pointer; user-select:none}
+  .switch input{position:absolute;opacity:0;width:0;height:0}
+  .track{width:38px;height:22px;border-radius:12px;background:rgba(255,255,255,.16);transition:.15s;flex:none}
+  .knob{position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s}
+  .switch input:checked + .track{background:var(--primary)}
+  .switch input:checked + .track + .knob{transform:translateX(16px)}
+  .switch .sw-lbl{font-size:12.5px;font-weight:600;color:#fff;white-space:nowrap}
+
+  /* ---------- сетка контента ---------- */
+  .grid{display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:22px; margin-top:22px; align-items:start}
+  @media (max-width:920px){ .grid{grid-template-columns:1fr} }
+
+  .main-panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden}
+  .section{padding:22px clamp(16px,2.4vw,26px)}
+  .section + .section{border-top:1px solid var(--line)}
+  .section h2{font-size:16px; font-weight:600; margin:0 0 14px; letter-spacing:-.2px}
+
+  .row{display:grid; grid-template-columns:minmax(150px,236px) minmax(0,1fr); gap:8px 22px;
+    padding:9px 0; align-items:start}
+  @media (max-width:560px){ .row{grid-template-columns:1fr; gap:2px} }
+  .row + .row{border-top:1px solid rgba(255,255,255,.045)}
+  .k{color:var(--muted); font-size:13px; padding-top:1px}
+  .v{font-size:13.5px; color:#eef4f5; min-width:0; word-wrap:break-word}
+  .v .file{color:var(--primary)}
+  .v .doc{color:#d5dee1}
+
+  /* free-text: consumer inline/hover controls */
+  .ft{position:relative}
+  .ft-main{display:flex; align-items:flex-start; gap:8px}
+  .ft-main .txt{min-width:0}
+  .globe{flex:none; margin-top:1px; width:24px;height:24px; display:grid;place-items:center;
+    border-radius:6px; border:1px solid var(--line); background:rgba(255,255,255,.03);
+    color:var(--accent); cursor:pointer; font-size:11px; font-weight:600; letter-spacing:.02em; transition:.12s}
+  .globe:hover{border-color:var(--accent); background:rgba(97,199,214,.12)}
+  .globe.chip{width:auto; padding:0 8px; height:22px; gap:5px}
+  .ft.hovermode .globe{opacity:0; transition:opacity .12s}
+  .ft.hovermode:hover .globe, .ft.hovermode .globe.is-open{opacity:1}
+  .other{margin-top:8px; border-left:2px solid var(--accent); background:rgba(97,199,214,.06);
+    padding:8px 12px; border-radius:0 8px 8px 0; font-size:13px; color:#dbeaec}
+  .other .o-lbl{display:block; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--accent); margin-bottom:3px}
+  .swapped-chip{display:inline-block; margin-left:8px; font-size:10px; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--accent); border:1px solid rgba(97,199,214,.4); border-radius:4px; padding:1px 5px; vertical-align:2px}
+
+  /* free-text: admin comparator */
+  .cmp{display:grid; gap:8px; background:rgba(255,255,255,.025); border:1px solid var(--line);
+    border-radius:10px; padding:11px 13px}
+  .cmp .pane{display:grid; grid-template-columns:96px minmax(0,1fr); gap:12px; align-items:start}
+  @media (max-width:560px){ .cmp .pane{grid-template-columns:1fr; gap:3px} }
+  .pane .p-lbl{font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); padding-top:3px}
+  .pane .p-txt{font-size:13.5px; color:#eef4f5; min-width:0}
+  .pane.src .p-txt{color:#cdd8db}
+  .cmp .divide{height:1px; background:var(--line)}
+  .badge{display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600;
+    padding:2px 8px; border-radius:20px; vertical-align:1px}
+  .badge .bd{width:6px;height:6px;border-radius:50%}
+  .b-machine{color:var(--st-machine); background:rgba(97,199,214,.12)}
+  .b-machine .bd{background:var(--st-machine)}
+  .b-edited{color:var(--st-edited); background:rgba(229,179,74,.14)}
+  .b-edited .bd{background:var(--st-edited)}
+  .b-confirmed{color:var(--st-confirmed); background:rgba(63,191,135,.14)}
+  .b-confirmed .bd{background:var(--st-confirmed)}
+  .b-stale{color:var(--st-stale); background:rgba(229,115,79,.14)}
+  .b-stale .bd{background:var(--st-stale)}
+  .b-pending{color:var(--st-pending); background:rgba(229,179,74,.14)}
+  .b-pending .bd{background:var(--st-pending)}
+  .p-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .acts{display:flex; gap:8px; margin-top:2px; flex-wrap:wrap}
+  .btn{appearance:none;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;
+    border-radius:7px;padding:5px 11px;border:1px solid var(--line-strong);background:transparent;color:#dbe6e8;transition:.12s}
+  .btn:hover{border-color:var(--accent);color:#fff}
+  .btn.primary{background:var(--primary);border-color:var(--primary);color:#04231f;font-weight:600}
+  .btn.primary:hover{filter:brightness(1.06)}
+  .note{font-size:11.5px;color:var(--muted); display:flex; gap:6px; align-items:flex-start; margin-top:2px}
+  .note.warn{color:#f0b48f}
+  .edit-ta{width:100%;background:#0a1a22;border:1px solid var(--accent);border-radius:8px;color:#fff;
+    font-family:inherit;font-size:13.5px;padding:8px 10px;resize:vertical;min-height:58px}
+
+  /* skeleton загрузки перевода */
+  .skel{display:grid; gap:7px; padding:2px 0}
+  .skel .ln{height:12px; border-radius:6px;
+    background:linear-gradient(90deg, rgba(255,255,255,.05) 25%, rgba(255,255,255,.14) 37%, rgba(255,255,255,.05) 63%);
+    background-size:400% 100%; animation:shimmer 1.1s ease-in-out infinite}
+  .skel .ln.w80{width:80%} .skel .ln.w60{width:60%} .skel .ln.w50{width:50%} .skel .ln.w40{width:40%}
+  @keyframes shimmer{0%{background-position:100% 0} 100%{background-position:0 0}}
+  @media (prefers-reduced-motion:reduce){ .skel .ln{animation:none} }
+
+  /* ---------- сайдбар ---------- */
+  .side{display:grid; gap:16px}
+  .scard{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:18px}
+  .scard h3{margin:0 0 14px; font-size:15px; font-weight:600}
+  .prog-num{font-size:13px;color:var(--muted)}
+  .prog-num b{color:#fff;font-size:15px}
+  .bar{height:7px;border-radius:6px;background:rgba(255,255,255,.1);margin:10px 0 4px;overflow:hidden}
+  .bar > i{display:block;height:100%;width:60%;background:linear-gradient(90deg,var(--primary),var(--accent))}
+  .sinfo{font-size:12px;color:var(--muted);margin-top:12px}
+  .sinfo b{display:block;color:#fff;font-size:14px;font-weight:500;margin-top:2px}
+  .partner{display:flex;align-items:center;gap:10px;margin-top:12px}
+  .partner:first-of-type{margin-top:0}
+  .partner .lg{width:32px;height:32px;border-radius:8px;background:#0e2028;display:grid;place-items:center;
+    font-size:10px;font-weight:700;color:var(--accent);flex:none}
+  .partner .pn{font-size:10.5px;color:var(--muted)}
+  .partner .pv{font-size:13px;color:#fff;font-weight:500}
+  .collapse{display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+  .collapse .cv{color:var(--muted)}
+
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<!-- ============ ХАРНЕСС ПРОТОТИПА ============ -->
+<div class="harness">
+  <div class="harness-row">
+    <span class="tag">Прототип</span>
+    <div class="ctl">
+      <span class="lbl">Роль / ЛК</span>
+      <div class="seg" id="roleSeg" role="group" aria-label="Роль">
+        <button data-role="client" aria-pressed="true">Клиент · RU</button>
+        <button data-role="admin" aria-pressed="false">Админ РРУ</button>
+        <button data-role="provider" aria-pressed="false">Провайдер · EN</button>
+      </div>
+    </div>
+    <div class="ctl" id="patternCtl">
+      <span class="lbl">Паттерн контрола</span>
+      <div class="seg" id="patternSeg" role="group" aria-label="Паттерн">
+        <button data-pat="header" aria-pressed="true">Хедер</button>
+        <button data-pat="inline" aria-pressed="false">Инлайн</button>
+        <button data-pat="hover" aria-pressed="false">Ховер</button>
+      </div>
+    </div>
+    <p class="hint" id="hint"></p>
+  </div>
+</div>
+
+<!-- ============ НАВИГАЦИЯ ЛК ============ -->
+<nav class="topnav">
+  <div class="topnav-in">
+    <div class="brand-links">
+      <a href="#" class="active"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span data-i="nav_home">Главная</span></a>
+      <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span data-i="nav_req">Заявки</span></a>
+    </div>
+    <div class="who">
+      <div class="av">ИГ</div>
+      <div>
+        <div class="nm" id="whoName">ИП Гаврилова</div>
+        <div class="rl" id="whoRole">Клиент в РФ</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="crumbs"><b data-i="nav_req">Заявки</b> / <span data-i="req_title">Электросварщик ручной сварки</span></div>
+  <div class="head">
+    <h1 data-i="req_title">Электросварщик ручной сварки</h1>
+    <span class="status-pill"><span class="dot"></span><span data-i="status">В работе</span></span>
+  </div>
+  <div class="meta">
+    <span data-i="m_grade">Разряд 5–6</span>
+    <span data-i="m_count">Количество 25 чел.</span>
+    <span data-i="m_city">Москва</span>
+  </div>
+  <div class="tabs" role="tablist">
+    <button class="active" data-i="tab_overview">Обзор</button>
+    <button data-i="tab_cand">Кандидаты</button>
+    <button data-i="tab_serv">Услуги</button>
+    <button data-i="tab_docs">Документы</button>
+  </div>
+
+  <div class="langbar" id="langbar">
+    <span class="txt" id="langbarTxt"></span>
+    <label class="switch">
+      <input type="checkbox" id="headerToggle">
+      <span class="track"></span><span class="knob"></span>
+      <span class="sw-lbl" id="headerToggleLbl"></span>
+    </label>
+  </div>
+
+  <div class="grid">
+    <div class="main-panel" id="panel"></div>
+
+    <aside class="side">
+      <div class="scard">
+        <h3 data-i="s_progress">Прогресс найма</h3>
+        <div class="prog-num" data-i="s_hired">Нанято кандидатов</div>
+        <div class="prog-num"><b>15</b> / 25</div>
+        <div class="bar"><i></i></div>
+        <div class="sinfo"><span data-i="s_date">Дата выхода на работу</span><b>01.04.2026</b></div>
+      </div>
+      <div class="scard">
+        <h3 data-i="s_partners">Партнёры</h3>
+        <div class="partner"><div class="lg">DE</div><div><div class="pn" data-i="s_employer">Работодатель</div><div class="pv">Demo Customer LLC</div></div></div>
+        <div class="partner"><div class="lg">OO</div><div><div class="pn" data-i="s_prf">Партнёр в РФ</div><div class="pv">ООО Ромашка</div></div></div>
+        <div class="partner"><div class="lg">RE</div><div><div class="pn" data-i="s_pin">Партнёр в Индии</div><div class="pv">Reliance Inc.</div></div></div>
+      </div>
+      <div class="scard">
+        <div class="collapse"><h3 style="margin:0" data-i="s_history">История статусов</h3><span class="cv">⌄</span></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+/* ---------------- i18n для «хрома» экрана ---------------- */
+const I = {
+  nav_home:["Главная","Home"], nav_req:["Заявки","Requests"],
+  req_title:["Электросварщик ручной сварки","Manual arc welder"],
+  status:["В работе","In progress"],
+  m_grade:["Разряд 5–6","Grade 5–6"], m_count:["Количество 25 чел.","Headcount 25"], m_city:["Москва","Moscow"],
+  tab_overview:["Обзор","Overview"], tab_cand:["Кандидаты","Candidates"], tab_serv:["Услуги","Services"], tab_docs:["Документы","Documents"],
+  s_progress:["Прогресс найма","Hiring progress"], s_hired:["Нанято кандидатов","Candidates hired"],
+  s_date:["Дата выхода на работу","Start date"], s_partners:["Партнёры","Partners"],
+  s_employer:["Работодатель","Employer"], s_prf:["Партнёр в РФ","Partner in Russia"], s_pin:["Партнёр в Индии","Partner in India"],
+  s_history:["История статусов","Status history"],
+};
+
+/* ---------------- Данные заявки ----------------
+   ft:true  → свободнотекстовое поле (участвует в фиче перевода)
+   src      → язык источника ('ru' у полей заявки, 'en' у полей профиля)
+   status   → machine | edited | confirmed | stale
+   confirm  → поле требует подтверждения значения (профиль кандидата)
+------------------------------------------------- */
+const SECTIONS = [
+  { t:["Способ привлечения и квота","Recruitment method & quota"], rows:[
+    { k:["Способ привлечения иностранных специалистов","Recruitment method"], v:["Квотируемые специалисты","Quota-based specialists"] },
+    { k:["У компании есть согласованная квота","Company has an approved quota"], v:["Да","Yes"] },
+    { k:["Приказ с согласованной квотой","Quota approval order"], file:"Приказ_о_квоте.pdf", open:["Открыть","Open"] },
+  ]},
+  { t:["Потребность в специалистах","Staffing need"], rows:[
+    { k:["Профессия","Profession"], v:["Электросварщик ручной сварки (105558)","Manual arc welder (105558)"] },
+    { k:["Занятие","Occupation"], v:["Сварщики и газорезчики (7212)","Welders and gas cutters (7212)"] },
+    { id:"grade", ft:true, src:"ru", status:"machine",
+      k:["Грейд (разряд)","Grade"], v:{ru:"От 5 разряда и выше",en:"Grade 5 and above"} },
+    { k:["Регион работы","Work region"], v:["Москва","Moscow"] },
+    { k:["Адрес работы","Work address"], v:["Москва, Пресненская набережная, 4","Moscow, Presnenskaya Naberezhnaya, 4"] },
+    { k:["Количество специалистов","Number of specialists"], v:["100","100"] },
+    { id:"term", ft:true, src:"ru", status:"confirmed",
+      k:["Срок привлечения (другой)","Engagement term (other)"], v:{ru:"2 года с возможностью продления",en:"2 years, extendable"} },
+  ]},
+  { t:["Условия оплаты","Compensation"], rows:[
+    { k:["Заработная плата (до вычета НДФЛ)","Salary (before tax)"], v:["150 000 ₽ / мес.","RUB 150,000 / mo"] },
+    { k:["Планируемая дата выхода на работу","Planned start date"], v:["01.04.2026","01.04.2026"] },
+    { k:["Предусмотрен испытательный срок","Probation period"], v:["Да","Yes"] },
+    { k:["Зарплата на испытательном сроке","Salary during probation"], v:["120 000 ₽ / мес.","RUB 120,000 / mo"] },
+  ]},
+  { t:["Бытовые условия и логистика","Living conditions & logistics"], rows:[
+    { k:["Проживание сотрудников","Accommodation"], v:["Общежитие","Dormitory"] },
+    { id:"accom", ft:true, src:"ru", status:"machine",
+      k:["Свой вариант проживания","Accommodation (other)"],
+      v:{ru:"Общежитие рядом с работой, двухместные комнаты, общий санузел",
+         en:"Dormitory near the work site, double rooms, shared bathroom"} },
+    { k:["Компания организует питание","Company arranges meals"], v:["Другое","Other"] },
+    { id:"meal", ft:true, src:"ru", status:"edited",
+      k:["Свой вариант питания","Meals (other)"],
+      v:{ru:"Компенсация 20 000 ₽ в месяц зачисляется на баланс сотрудника, тратить можно только в корпоративной столовой",
+         en:"RUB 20,000/month is credited to the employee's balance and can be spent only in the corporate canteen"} },
+    { id:"transport", ft:true, src:"ru", status:"machine",
+      k:["Свой вариант логистики","Transport (other)"],
+      v:{ru:"Компания предоставляет служебный транспорт до места работы",
+         en:"The company provides shuttle transport to the work site"} },
+  ]},
+  { t:["Организация работ и медицина","Work organization & medical"], rows:[
+    { k:["Нужен бригадир","Foreman required"], v:["Да","Yes"] },
+    { k:["Сотрудников на одного бригадира","Employees per foreman"], v:["15","15"] },
+    { k:["Как будет выбран бригадир","How the foreman is chosen"], v:["Назначим одного из сотрудников","We will appoint one of the employees"] },
+    { k:["Требуется расширенный медосмотр","Extended medical exam required"], v:["Да","Yes"] },
+    { id:"med", ft:true, src:"ru", status:"machine",
+      k:["Необходимые обследования","Required examinations"],
+      v:{ru:"Психиатр, нарколог, флюорография",en:"Psychiatrist, narcologist, fluorography"} },
+  ]},
+  { t:["Дополнительные услуги","Additional services"], rows:[
+    { k:["Нужна помощь с покупкой билетов","Help with ticket purchase"], v:["Да","Yes"] },
+    { k:["Помощь со встречей в аэропорту","Help meeting at the airport"], v:["Другое","Other"] },
+    { id:"meet", ft:true, src:"ru", status:"machine",
+      k:["Свой вариант встречи","Meeting (other)"],
+      v:{ru:"Встреча в аэропорту с табличкой, трансфер до общежития",
+         en:"Airport pickup with a name sign, transfer to the dormitory"} },
+    { k:["Нужен переводчик","Interpreter needed"], v:["Да, на период адаптации","Yes, for the adaptation period"] },
+    { id:"addinfo", ft:true, src:"ru",
+      k:["Дополнительная информация","Additional information"],
+      v:{ru:"Маршрут прибытия: Бангалор – Краснодар – Санкт-Петербург",
+         en:"Arrival route: Bangalore – Krasnodar – Saint Petersburg"} },
+  ]},
+  { t:["Профиль вакансии и кандидата","Vacancy & candidate profile"], rows:[
+    { k:["Предпочтительный пол специалиста","Preferred gender"], v:["Мужской","Male"] },
+    { k:["Предпочтительный возраст","Preferred age"], v:["25–40 лет","25–40 years"] },
+    { id:"duties", ft:true, src:"en", status:"confirmed",
+      k:["Должностные обязанности","Job responsibilities"],
+      v:{en:"Welding of especially complex structures operated in extreme conditions (gas and oil pipelines, aircraft assemblies)",
+         ru:"Сварка особо сложных конструкций, эксплуатируемых в экстремальных условиях (газо- и нефтепроводы, узлы летательных аппаратов)"} },
+    { id:"reqs", ft:true, src:"en", status:"edited",
+      k:["Требования к специалисту","Specialist requirements"],
+      v:{en:"Experience with dissimilar metals, clearance for work at height",
+         ru:"Опыт работы с разнородными металлами, допуск к работе на высоте"} },
+    { k:["Формат собеседования","Interview format"], v:["Онлайн","Online"] },
+  ]},
+  { t:["График и переработки","Schedule & overtime"], rows:[
+    { k:["Режим работы","Work mode"], v:["Сменный график","Shift schedule"] },
+    { id:"schedule", ft:true, src:"en", status:"machine", confirm:true,
+      k:["Детали режима работы","Work schedule details"],
+      v:{en:"12-hour shifts, 2/2 rotation",ru:"Смены по 12 часов, чередование 2/2"} },
+    { k:["Планируются ли переработки","Overtime expected"], v:["Да","Yes"] },
+    { k:["Оплата переработок","Overtime payment"], v:["Фиксированная оплата","Fixed rate"] },
+    { k:["Как рассчитывается оплата","How it is calculated"], v:["Почасово","Hourly"] },
+    { id:"overtime", ft:true, src:"en", status:"machine", confirm:true,
+      k:["Детали оплаты переработок","Overtime payment details"],
+      v:{en:"RUB 2,000/hour, no more than once a month, up to 2 hours",
+         ru:"2000 ₽ / час, не чаще одного раза в месяц, не более 2 часов"} },
+  ]},
+];
+
+/* ---------------- Состояние ---------------- */
+let role = "client";           // client | admin | provider
+let pattern = "header";        // header | inline | hover
+let headerShowOther = false;
+let loading = false;            // идёт «подгрузка перевода» → скелетоны
+let loadTimer = null;
+const openSet = new Set();      // раскрытые поля (inline/hover)
+const editing = new Set();      // поля в режиме правки (admin)
+
+const STATUS = {
+  machine:  ["Машинный","Machine"],
+  edited:   ["Отредактирован","Edited"],
+  confirmed:["Подтверждён","Confirmed"],
+  stale:    ["Устарел","Outdated"],
+};
+const esc = s => (s+"").replace(/[&<>"]/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+
+function langOf(r){ return r==="provider" ? "en" : "ru"; }
+function otherLang(l){ return l==="ru" ? "en" : "ru"; }
+function findRow(id){ for(const s of SECTIONS) for(const r of s.rows) if(r.id===id) return r; }
+
+/* ---------------- Рендер ---------------- */
+function render(){
+  document.documentElement.lang = role==="provider" ? "en" : "ru";
+  const vl = langOf(role);
+
+  // «хром»
+  document.querySelectorAll("[data-i]").forEach(el=>{ const t=I[el.dataset.i]; if(t) el.textContent = t[vl==="en"?1:0]; });
+  document.getElementById("whoName").textContent = ({client:"ИП Гаврилова",admin:"А. Смирнов",provider:"R. Sharma"})[role];
+  document.getElementById("whoRole").textContent = ({client:"Клиент в РФ",admin:"Администратор РРУ",provider:"Provider · Candidates"})[role];
+
+  // роль / паттерн переключатели
+  document.querySelectorAll("#roleSeg button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.role===role));
+  document.querySelectorAll("#patternSeg button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.pat===pattern));
+  const isConsumer = role!=="admin";
+  document.getElementById("patternCtl").style.display = isConsumer ? "" : "none";
+
+  // подсказка
+  const hints = {
+    "admin": "<b>Админ РРУ:</b> у каждого свободного поля рядом показаны оригинал и перевод — только просмотр, как в требованиях. Правки и подтверждения перевода здесь нет.",
+    "client-header": "<b>Клиент · хедер:</b> одна кнопка вверху переключает весь бланк на английскую версию (что видит провайдер). Минимум шума.",
+    "client-inline": "<b>Клиент · инлайн:</b> под каждым свободным полем всегда виден чип «EN» — раскрывается на месте. Заметно и работает на тач.",
+    "client-hover": "<b>Клиент · ховер:</b> кнопка появляется только при наведении → на тач недоступна и её не видно. Показано, почему это худший вариант.",
+    "provider-header": "<b>Провайдер · хедер:</b> одна кнопка вверху показывает оригинал (RU) поверх английского перевода.",
+    "provider-inline": "<b>Провайдер · инлайн:</b> под каждым свободным полем всегда виден чип «RU-оригинал» — раскрывается на месте.",
+    "provider-hover": "<b>Провайдер · ховер:</b> кнопка «оригинал» только по наведению — недоступна на тач, плохо заметна.",
+  };
+  document.getElementById("hint").innerHTML = role==="admin" ? hints.admin : hints[role+"-"+pattern];
+
+  // langbar (только header-паттерн у потребителя)
+  const lb = document.getElementById("langbar");
+  const showLangbar = isConsumer && pattern==="header";
+  lb.classList.toggle("show", showLangbar);
+  if(showLangbar){
+    document.getElementById("langbarTxt").textContent = role==="client"
+      ? "Заявка заполнена на русском. Можно посмотреть английскую версию, которую видит провайдер."
+      : "The request was filled in Russian. You can view the original text next to the translation.";
+    document.getElementById("headerToggleLbl").textContent = role==="client"
+      ? (headerShowOther?"Английская версия":"Показать английскую версию")
+      : (headerShowOther?"Original (RU)":"Show original (RU)");
+    document.getElementById("headerToggle").checked = headerShowOther;
+  }
+
+  // панель секций
+  document.getElementById("panel").innerHTML = SECTIONS.map(renderSection).join("");
+  bind();
+}
+
+function renderSection(s){
+  const vl = langOf(role);
+  const rows = s.rows.map(renderRow).join("");
+  return `<div class="section"><h2>${esc(s.t[vl==="en"?1:0])}</h2>${rows}</div>`;
+}
+
+function renderRow(r){
+  const vl = langOf(role);
+  const label = esc((r.k)[vl==="en"?1:0]);
+  let val;
+  if(r.file){
+    val = `<span class="v"><span class="doc">${esc(r.file)}</span> · <a class="file" href="#" onclick="return false">${esc(r.open[vl==="en"?1:0])}</a></span>`;
+  } else if(r.ft){
+    val = loading ? renderSkeleton(r) : (role==="admin" ? renderAdmin(r) : renderConsumer(r));
+  } else {
+    val = `<span class="v">${esc(r.v[vl==="en"?1:0])}</span>`;
+  }
+  return `<div class="row"><div class="k">${label}</div><div class="v-wrap">${val}</div></div>`;
+}
+
+/* скелетон «перевод подгружается» для свободного поля */
+function renderSkeleton(r){
+  if(role==="admin"){
+    const src=r.src, tgt=otherLang(src);
+    const srcLbl = src==="ru" ? "Оригинал · RU" : "Оригинал · EN";
+    const tgtLbl = tgt==="en" ? "Перевод · EN (для провайдера)" : "Перевод · RU (для клиента)";
+    return `<div class="cmp">
+      <div class="pane src"><div class="p-lbl">${srcLbl}</div><div class="skel"><span class="ln w80"></span></div></div>
+      <div class="divide"></div>
+      <div class="pane"><div class="p-lbl">${tgtLbl}</div><div class="skel"><span class="ln w80"></span><span class="ln w50"></span></div></div>
+    </div>`;
+  }
+  return `<div class="skel"><span class="ln w80"></span><span class="ln w50"></span></div>`;
+}
+
+/* потребитель: header / inline / hover */
+function renderConsumer(r){
+  const vl = langOf(role);
+  const ol = otherLang(vl);
+  const primaryText = r.v[vl];
+
+  // header-паттерн: глобальный тумблер меняет отображаемый текст
+  if(pattern==="header"){
+    if(headerShowOther){
+      const chip = ol==="en" ? "перевод · EN" : "оригинал · RU";
+      return `<span class="v">${esc(r.v[ol])}<span class="swapped-chip">${chip}</span></span>`;
+    }
+    return `<span class="v">${esc(primaryText)}</span>`;
+  }
+
+  // inline / hover: чип-контрол у поля
+  const open = openSet.has(r.id);
+  const chipLbl = ol==="en" ? "EN" : "RU-оригинал";
+  const oLbl = ol==="en"
+      ? (role==="provider" ? "Translation · EN" : "Английская версия")
+      : (role==="provider" ? "Original · RU" : "Оригинал (RU)");
+  const cls = pattern==="hover" ? "ft hovermode" : "ft";
+  const otherBox = open
+    ? `<div class="other"><span class="o-lbl">${esc(oLbl)}</span>${esc(r.v[ol])}</div>` : "";
+  return `<div class="${cls}">
+     <div class="ft-main">
+       <span class="v txt">${esc(primaryText)}</span>
+       <button class="globe chip${open?" is-open":""}" data-toggle="${r.id}" title="Показать другой язык" aria-expanded="${open}">
+         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg>${esc(chipLbl)}
+       </button>
+     </div>${otherBox}</div>`;
+}
+
+/* админ РРУ: просмотр оригинала и перевода рядом (только чтение — по требованиям) */
+function renderAdmin(r){
+  const src = r.src;                 // язык источника
+  const tgt = otherLang(src);        // язык перевода
+  const srcLbl = src==="ru" ? "Оригинал · RU" : "Оригинал · EN";
+  const tgtLbl = tgt==="en" ? "Перевод · EN (для провайдера)" : "Перевод · RU (для клиента)";
+
+  return `<div class="cmp">
+    <div class="pane src"><div class="p-lbl">${esc(srcLbl)}</div><div class="p-txt">${esc(r.v[src])}</div></div>
+    <div class="divide"></div>
+    <div class="pane"><div class="p-lbl">${esc(tgtLbl)}</div><div class="p-txt">${esc(r.v[tgt])}</div></div>
+  </div>`;
+}
+
+/* ---------------- События ---------------- */
+function bind(){
+  document.querySelectorAll("[data-toggle]").forEach(b=>b.onclick=()=>{
+    const id=b.dataset.toggle; openSet.has(id)?openSet.delete(id):openSet.add(id); render();
+  });
+  document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{ editing.add(b.dataset.edit); render(); });
+  document.querySelectorAll("[data-cancel]").forEach(b=>b.onclick=()=>{ editing.delete(b.dataset.cancel); render(); });
+  document.querySelectorAll("[data-save]").forEach(b=>b.onclick=()=>{
+    const id=b.dataset.save, r=findRow(id), tgt=otherLang(r.src);
+    const ta=document.getElementById("ta-"+id); if(ta) r.v[tgt]=ta.value;
+    r.status="edited"; editing.delete(id); render();
+  });
+  document.querySelectorAll("[data-confirm]").forEach(b=>b.onclick=()=>{ findRow(b.dataset.confirm).status="confirmed"; render(); });
+  document.querySelectorAll("[data-retrans]").forEach(b=>b.onclick=()=>{ findRow(b.dataset.retrans).status="machine"; render(); });
+}
+
+/* при клике на свитчер — скелетон свободных полей на 1 секунду, затем результат */
+function triggerLoad(){
+  loading = true; render();
+  if(loadTimer) clearTimeout(loadTimer);
+  loadTimer = setTimeout(()=>{ loading = false; render(); }, 1000);
+}
+
+document.querySelectorAll("#roleSeg button").forEach(b=>b.onclick=()=>{
+  if(b.dataset.role===role) return;
+  role=b.dataset.role; headerShowOther=false; openSet.clear(); editing.clear(); triggerLoad();
+});
+document.querySelectorAll("#patternSeg button").forEach(b=>b.onclick=()=>{
+  if(b.dataset.pat===pattern) return;
+  pattern=b.dataset.pat; openSet.clear(); triggerLoad();
+});
+document.getElementById("headerToggle").onchange=e=>{ headerShowOther=e.target.checked; triggerLoad(); };
+
+render();
+</script>
+
+</body></html>
