@@ -13,8 +13,8 @@
   :root{
     color-scheme: dark;
     --bg:#181C1F; --bg2:#181C1F;
-    --panel:rgba(255,255,255,.09); --panel-solid:#2E3134;
-    --card:rgba(255,255,255,.09); --card2:rgba(255,255,255,.06);
+    --panel:rgba(255,255,255,.045); --panel-solid:#26292C;
+    --card:rgba(255,255,255,.045); --card2:rgba(255,255,255,.03);
     --line:rgba(255,255,255,.08); --line-strong:rgba(255,255,255,.14);
     --text:#ffffff; --muted:#8A9092; --muted2:#6E767A;
     --primary:#07BBB2; --primary-dim:rgba(7,187,178,.14);
@@ -30,8 +30,7 @@
   body{
     font-family:var(--f); color:var(--text);
     background:
-      radial-gradient(1100px 620px at -2% -4%, rgba(20,79,103,.60), transparent 58%),
-      radial-gradient(900px 520px at 100% -12%, rgba(22,60,64,.30), transparent 60%),
+      url("bg.webp") top center / cover no-repeat,
       var(--bg);
     background-attachment: fixed;
     -webkit-font-smoothing:antialiased;
