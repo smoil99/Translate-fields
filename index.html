@@ -155,6 +155,26 @@
   .swapped-chip{display:inline-block; margin-left:8px; font-size:10px; letter-spacing:.06em; text-transform:uppercase;
     color:var(--accent); border:1px solid rgba(97,199,214,.4); border-radius:4px; padding:1px 5px; vertical-align:2px}
 
+  /* инлайн-иконка перевода (文A) + тултип — как в макете */
+  .tr-icon{position:relative; flex:none; margin-top:-3px; width:26px; height:26px; padding:0;
+    display:grid; place-items:center; border:0; background:transparent; color:var(--muted);
+    border-radius:50%; cursor:pointer; transition:background .12s, color .12s, opacity .12s}
+  .tr-icon svg{width:16px; height:16px}
+  .tr-icon:hover{background:rgba(255,255,255,.10); color:#d4d9db}
+  .tr-icon.is-open{color:var(--accent)}
+  .ft.hovermode .tr-icon{opacity:0}
+  .ft.hovermode:hover .tr-icon, .ft.hovermode .tr-icon.is-open, .ft.hovermode .tr-icon:focus-visible{opacity:1}
+  .tr-icon .tip{position:absolute; bottom:calc(100% + 10px); right:-8px; z-index:25;
+    background:#2A2D30; border:1px solid rgba(255,255,255,.09); border-radius:10px;
+    padding:8px 11px; width:max-content; max-width:260px; text-align:left;
+    box-shadow:0 12px 28px -12px rgba(0,0,0,.65);
+    opacity:0; transform:translateY(4px); pointer-events:none; transition:opacity .14s ease, transform .14s ease}
+  .tr-icon .tip b{display:block; font-size:12.5px; font-weight:600; color:#fff; white-space:nowrap}
+  .tr-icon .tip i{display:block; font-size:11.5px; font-style:normal; color:var(--muted); margin-top:2px; white-space:nowrap}
+  .tr-icon .tip::after{content:""; position:absolute; top:100%; right:14px;
+    border:6px solid transparent; border-top-color:#2A2D30}
+  .tr-icon:hover .tip, .tr-icon:focus-visible .tip{opacity:1; transform:translateY(0)}
+
   /* free-text: admin comparator */
   .cmp{display:grid; gap:8px; background:rgba(255,255,255,.025); border:1px solid var(--line);
     border-radius:10px; padding:11px 13px}
@@ -464,11 +484,11 @@ function render(){
   const hints = {
     "admin": "<b>Админ РРУ:</b> у каждого свободного поля рядом показаны оригинал и перевод — только просмотр, как в требованиях. Правки и подтверждения перевода здесь нет.",
     "client-header": "<b>Клиент · хедер:</b> тумблер справа от заголовка переключает весь бланк на английскую версию (что видит провайдер). Минимум шума.",
-    "client-inline": "<b>Клиент · инлайн:</b> под каждым свободным полем всегда виден чип «EN» — раскрывается на месте. Заметно и работает на тач.",
-    "client-hover": "<b>Клиент · ховер:</b> кнопка появляется только при наведении → на тач недоступна и её не видно. Показано, почему это худший вариант.",
+    "client-inline": "<b>Клиент · инлайн:</b> у переведённых полей (профиль кандидата) — иконка 文A с тултипом «Переведено ИИ»; клик показывает оригинал. У исходных RU-полей иконки нет.",
+    "client-hover": "<b>Клиент · ховер:</b> та же иконка перевода, но видна только при наведении на строку → на тач недоступна. Показано, почему это хуже.",
     "provider-header": "<b>Провайдер · хедер:</b> тумблер справа от заголовка показывает оригинал (RU) поверх английского перевода.",
-    "provider-inline": "<b>Провайдер · инлайн:</b> под каждым свободным полем всегда виден чип «RU-оригинал» — раскрывается на месте.",
-    "provider-hover": "<b>Провайдер · ховер:</b> кнопка «оригинал» только по наведению — недоступна на тач, плохо заметна.",
+    "provider-inline": "<b>Провайдер · инлайн:</b> у переведённых полей (поля заявки) — иконка 文A с тултипом; клик показывает оригинал (RU). У исходных EN-полей иконки нет.",
+    "provider-hover": "<b>Провайдер · ховер:</b> та же иконка перевода видна только по наведению — на тач недоступна.",
   };
   document.getElementById("hint").innerHTML = role==="admin" ? hints.admin : hints[role+"-"+pattern];
 
@@ -538,20 +558,23 @@ function renderConsumer(r){
     return `<span class="v">${esc(primaryText)}</span>`;
   }
 
-  // inline / hover: чип-контрол у поля
+  // inline / hover: иконка перевода + тултип — только у переведённых для зрителя полей
+  const isTranslated = r.src !== vl;
+  if(!isTranslated){
+    return `<span class="v">${esc(primaryText)}</span>`;   // зритель видит оригинал — переводить нечего
+  }
   const open = openSet.has(r.id);
-  const chipLbl = ol==="en" ? "EN" : "RU-оригинал";
-  const oLbl = ol==="en"
-      ? (role==="provider" ? "Translation · EN" : "Английская версия")
-      : (role==="provider" ? "Original · RU" : "Оригинал (RU)");
+  const origLang = r.src.toUpperCase();                    // язык оригинала (EN для полей профиля, RU для полей заявки)
+  const tipSub = open ? "Нажмите, чтобы скрыть оригинал" : "Нажмите, чтобы показать оригинал";
   const cls = pattern==="hover" ? "ft hovermode" : "ft";
   const otherBox = open
-    ? `<div class="other"><span class="o-lbl">${esc(oLbl)}</span>${esc(r.v[ol])}</div>` : "";
+    ? `<div class="other"><span class="o-lbl">Оригинал · ${origLang}</span>${esc(r.v[r.src])}</div>` : "";
   return `<div class="${cls}">
      <div class="ft-main">
        <span class="v txt">${esc(primaryText)}</span>
-       <button class="globe chip${open?" is-open":""}" data-toggle="${r.id}" title="Показать другой язык" aria-expanded="${open}">
-         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg>${esc(chipLbl)}
+       <button class="tr-icon${open?" is-open":""}" data-toggle="${r.id}" aria-expanded="${open}" aria-label="Переведено ИИ — показать оригинал">
+         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>
+         <span class="tip" role="tooltip"><b>Переведено с помощью ИИ</b><i>${tipSub}</i></span>
        </button>
      </div>${otherBox}</div>`;
 }
