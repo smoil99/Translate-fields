@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Commissioner:wght@400;500;600&display=swap">
+<title>Связанные заявки</title>
+<meta name="description" content="Кликабельный прототип свёртки длинного списка связанных заявок в ячейке таблицы сделок: чип + popover против inline-разворота">
+<style>
+  /* Layout: тёмная таблица сделок как в портале; строки фикс. высоты, остаток заявок — в счётчик; сверху общий харнесс прототипа */
+  :root{
+    color-scheme: dark;
+    --bg:#181C1F;
+    --panel:rgba(255,255,255,.045); --panel-solid:#26292C;
+    --card:rgba(255,255,255,.045); --card2:rgba(255,255,255,.03);
+    --line:rgba(255,255,255,.08); --line-strong:rgba(255,255,255,.14);
+    --text:#ffffff; --muted:#8A9092; --muted2:#6E767A;
+    --primary:#07BBB2; --primary-dim:rgba(7,187,178,.14);
+    --accent:#61C7D6;
+    --glass:rgba(24,28,31,.62);
+    --st-confirmed:#3FBF87; --st-pending:#E5B34A; --st-draft:#8FA6C9;
+    --radius:16px;
+    --f: "Commissioner", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:var(--f); color:var(--text);
+    background: url("bg.webp") top center / cover no-repeat, var(--bg);
+    background-attachment: fixed;
+    -webkit-font-smoothing:antialiased;
+    font-size:14px; line-height:1.45;
+  }
+  a{color:var(--primary); text-decoration:none}
+  [hidden]{display:none!important}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+
+  /* ---------- харнесс прототипа ---------- */
+  .harness{background:rgba(20,23,26,.94); border-bottom:1px solid var(--line); padding:10px clamp(16px,4vw,40px)}
+  .harness-row{display:flex; flex-wrap:wrap; align-items:center; gap:14px 22px; max-width:1240px; margin:0 auto}
+  .harness .tag{font-size:10px; letter-spacing:.14em; font-weight:600; color:var(--primary);
+    border:1px solid rgba(7,187,178,.5); border-radius:5px; padding:3px 8px; text-transform:uppercase}
+  .ctl{display:flex; align-items:center; gap:9px; min-width:0}
+  .ctl > span.lbl{font-size:11px; color:var(--muted); letter-spacing:.04em; white-space:nowrap}
+  .seg{display:inline-flex; background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:9px; padding:3px}
+  .seg button{appearance:none; border:0; background:transparent; color:var(--muted);
+    font-family:inherit; font-size:12.5px; font-weight:500; padding:6px 11px; border-radius:6px; cursor:pointer; white-space:nowrap; transition:.12s}
+  .seg button:hover{color:#fff}
+  .seg button[aria-pressed="true"]{background:var(--primary); color:#04231f; font-weight:600}
+  .hint{font-size:11.5px; color:var(--muted2); flex:1 1 240px; min-width:0}
+  .hint b{color:var(--muted); font-weight:500}
+
+  /* ---------- меню переключения прототипов (общее для страниц) ---------- */
+  .proto-menu{position:relative; flex:none}
+  .pm-trigger{appearance:none; display:inline-flex; align-items:center; gap:8px; cursor:pointer;
+    font-family:inherit; font-size:12.5px; font-weight:600; color:#fff;
+    background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:9px; padding:6px 11px}
+  .pm-trigger:hover{border-color:var(--line-strong)}
+  .pm-trigger:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .pm-chev{width:13px;height:13px;color:var(--muted); transition:transform .15s}
+  .pm-trigger[aria-expanded="true"] .pm-chev{transform:rotate(180deg)}
+  .pm-pop{position:absolute; top:calc(100% + 8px); left:0; z-index:60; min-width:270px;
+    background:var(--panel-solid); border:1px solid var(--line-strong); border-radius:12px;
+    box-shadow:0 20px 50px -14px rgba(0,0,0,.7); padding:6px; display:flex; flex-direction:column; gap:2px}
+  .pm-pop a{display:flex; align-items:flex-start; gap:10px; padding:9px 10px; border-radius:8px; color:#fff; font-size:13px; font-weight:500}
+  .pm-pop a:hover{background:rgba(255,255,255,.06)}
+  .pm-pop a .pm-ic{width:16px;height:16px;color:var(--muted);flex:none;margin-top:1px}
+  .pm-pop a small{display:block;color:var(--muted);font-size:11px;font-weight:400;margin-top:2px;line-height:1.35}
+  .pm-pop a[aria-current="page"]{background:var(--primary-dim)}
+  .pm-pop a[aria-current="page"] .pm-ic{color:var(--primary)}
+
+  /* ---------- верхняя навигация ЛК ---------- */
+  .topnav{position:sticky; top:env(safe-area-inset-top,0px); z-index:35;
+    background:transparent; border-bottom:1px solid transparent; padding:0 clamp(16px,4vw,40px);
+    transition:background .22s ease, border-color .22s ease}
+  body.scrolled .topnav{background:var(--glass);
+    -webkit-backdrop-filter:blur(16px) saturate(1.4); backdrop-filter:blur(16px) saturate(1.4); border-bottom-color:var(--line)}
+  .topnav-in{max-width:1240px; margin:0 auto; height:54px; display:flex; align-items:center; gap:26px}
+  .brand-links{display:flex; gap:22px; align-items:center}
+  .brand-links a{display:flex; align-items:center; gap:7px; color:var(--muted); font-weight:500; font-size:13.5px}
+  .brand-links a.active{color:#fff}
+  .brand-links .ic{width:15px;height:15px;opacity:.75}
+  .who{margin-left:auto; display:flex; align-items:center; gap:10px}
+  .who .av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#1c3a44,#0f2129); display:grid;place-items:center;color:var(--accent);font-size:12px}
+  .who .nm{font-size:13px;font-weight:600;line-height:1.1}
+  .who .rl{font-size:11px;color:var(--muted)}
+
+  /* ---------- шапка раздела ---------- */
+  .lk-header{position:sticky; top:calc(var(--topnav-h,54px) + env(safe-area-inset-top,0px)); z-index:30;
+    background:transparent; transition:background .22s ease, box-shadow .22s ease}
+  body.scrolled .lk-header{background:var(--glass);
+    -webkit-backdrop-filter:blur(16px) saturate(1.4); backdrop-filter:blur(16px) saturate(1.4); box-shadow:0 12px 34px -22px rgba(0,0,0,.8)}
+  .lk-header-in{max-width:1240px; margin:0 auto; padding:16px clamp(16px,4vw,40px) 0}
+  .crumbs{font-size:12.5px; color:var(--muted); margin-bottom:12px}
+  .head{display:flex; align-items:center; gap:14px; flex-wrap:wrap}
+  h1{font-size:clamp(22px,3vw,30px); font-weight:600; letter-spacing:-.5px; margin:0; text-wrap:balance}
+  .sub{color:var(--muted); font-size:13.5px; margin:10px 0 0; max-width:66ch; line-height:1.5}
+  .btn-primary{margin-left:auto; display:inline-flex; align-items:center; gap:7px; background:var(--primary); color:#04231f;
+    font-family:inherit; font-weight:600; font-size:13.5px; border:0; border-radius:10px; padding:9px 15px; cursor:pointer}
+  .btn-primary:hover{filter:brightness(1.07)}
+  @media (max-width:560px){ .btn-primary{margin-left:0} }
+
+  /* фильтры (декоративные, как в портале) */
+  .filters{display:flex; flex-wrap:wrap; gap:10px; margin-top:18px}
+  .filters .fld{display:flex; flex-direction:column; gap:4px}
+  .filters .fld span{font-size:10.5px; color:var(--muted2); letter-spacing:.03em}
+  .filters .pill{background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:999px;
+    color:#cfd6d7; font-size:12.5px; padding:8px 14px; min-width:120px; display:flex; align-items:center; justify-content:space-between; gap:8px}
+  .filters .pill.ph{color:var(--muted2)}
+
+  /* ---------- контейнер ---------- */
+  .wrap{max-width:1240px; margin:0 auto; padding:0 clamp(16px,4vw,40px) 70px}
+
+  .panel{margin-top:22px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden}
+  .scroll{overflow-x:auto}
+  table{width:100%; border-collapse:collapse; min-width:760px}
+  thead th{text-align:left; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted2);
+    font-weight:600; padding:16px 20px; white-space:nowrap; border-bottom:1px solid var(--line)}
+  tbody td{padding:15px 20px; font-size:13.5px; border-bottom:1px solid var(--line); vertical-align:top}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr:hover{background:rgba(255,255,255,.025)}
+  .mono{font-variant-numeric:tabular-nums; font-feature-settings:"tnum"}
+  .name{font-weight:550}
+  .muted{color:var(--muted)}
+
+  .status{display:inline-flex; align-items:center; gap:7px; font-size:12px; padding:4px 11px; border-radius:999px; white-space:nowrap}
+  .status .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+  .st-confirmed{color:var(--st-confirmed); background:rgba(63,191,135,.1)}
+  .st-pending{color:var(--st-pending); background:rgba(229,179,74,.1)}
+  .st-draft{color:var(--st-draft); background:rgba(143,166,201,.1)}
+
+  /* ячейка «Связанные заявки» */
+  .reqcell{min-width:240px}
+  .req-list{display:flex; flex-wrap:wrap; gap:6px; align-items:center}
+  .tag-req{font-size:12.5px; padding:4px 9px; border-radius:8px; background:rgba(255,255,255,.04);
+    border:1px solid var(--line); color:#dfe5e6; white-space:nowrap}
+  .more{appearance:none; font:inherit; cursor:pointer; font-size:12.5px; font-weight:600; padding:4px 10px; border-radius:8px;
+    background:var(--primary-dim); border:1px solid rgba(7,187,178,.4); color:var(--primary);
+    display:inline-flex; align-items:center; gap:4px; transition:background .15s}
+  .more:hover{background:rgba(7,187,178,.22)}
+  .more:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .linkmore{appearance:none; border:0; background:transparent; font:inherit; cursor:pointer;
+    font-size:12.5px; font-weight:600; color:var(--primary); padding:4px 0 0; text-align:left; display:block}
+  .linkmore:hover{text-decoration:underline}
+  .linkmore:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px}
+
+  /* popover */
+  .pop{position:fixed; z-index:70; width:280px; max-height:344px; background:var(--panel-solid);
+    border:1px solid var(--line-strong); border-radius:14px; box-shadow:0 22px 54px -14px rgba(0,0,0,.72);
+    overflow:hidden; display:flex; flex-direction:column; animation:pop .12s ease-out}
+  @keyframes pop{from{opacity:0; transform:translateY(-4px)}}
+  .pop-head{padding:12px 14px 10px; border-bottom:1px solid var(--line)}
+  .pop-title{font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted2)}
+  .pop-search{width:100%; margin-top:10px; background:rgba(0,0,0,.3); border:1px solid var(--line); border-radius:9px;
+    color:#fff; font:inherit; font-size:13px; padding:8px 10px}
+  .pop-search:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+  .pop-body{overflow-y:auto; padding:6px; display:grid; grid-template-columns:1fr 1fr; gap:4px}
+  .pop-body a{font-size:12.5px; color:#dfe5e6; text-decoration:none; padding:7px 9px; border-radius:8px; display:block;
+    white-space:nowrap; font-variant-numeric:tabular-nums}
+  .pop-body a:hover{background:var(--primary-dim); color:var(--primary)}
+  .pop-foot{padding:10px 14px; border-top:1px solid var(--line)}
+  .pop-foot a{color:var(--primary); font-size:12.5px; font-weight:600}
+  .pop-foot a:hover{text-decoration:underline}
+
+  @media (max-width:560px){ .pop{width:calc(100vw - 32px)} }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+</style>
+</head>
+<body>
+<!-- ============ ХАРНЕСС ПРОТОТИПА ============ -->
+<div class="harness">
+  <div class="harness-row">
+    <span class="tag">Прототип</span>
+
+    <!-- меню переключения фич -->
+    <div class="proto-menu" id="protoMenu">
+      <button class="pm-trigger" aria-haspopup="menu" aria-expanded="false">
+        <span class="pm-cur">Связанные заявки</span>
+        <svg class="pm-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="pm-pop" role="menu" hidden>
+        <a role="menuitem" href="index.html">
+          <svg class="pm-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 8h14M5 12h14M5 16h9"/><path d="M15.5 4.5l4 4"/></svg>
+          <span>Перевод свободных полей<small>Роли, паттерны контрола, правка и подтверждение</small></span>
+        </a>
+        <a role="menuitem" href="related-requests.html" aria-current="page">
+          <svg class="pm-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 4v16"/></svg>
+          <span>Связанные заявки<small>Свёртка длинного списка в ячейке таблицы</small></span>
+        </a>
+      </div>
+    </div>
+
+    <div class="ctl" id="patternCtl">
+      <span class="lbl">Паттерн свёртки</span>
+      <div class="seg" id="patternSeg" role="group" aria-label="Паттерн свёртки">
+        <button data-pat="chip" aria-pressed="true">Чип + popover</button>
+        <button data-pat="inline" aria-pressed="false">Инлайн-разворот</button>
+      </div>
+    </div>
+    <p class="hint" id="hint"></p>
+  </div>
+</div>
+
+<!-- ============ НАВИГАЦИЯ ЛК ============ -->
+<nav class="topnav">
+  <div class="topnav-in">
+    <div class="brand-links">
+      <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span>Главная</span></a>
+      <a href="#" class="active"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 4v16"/></svg><span>Сделки</span></a>
+      <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span>Заявки</span></a>
+    </div>
+    <div class="who">
+      <div class="av">АД</div>
+      <div>
+        <div class="nm">Platform</div>
+        <div class="rl">Администратор</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ============ ШАПКА РАЗДЕЛА ============ -->
+<header class="lk-header">
+  <div class="lk-header-in">
+    <div class="crumbs">Сделки</div>
+    <div class="head">
+      <h1>Сделки</h1>
+      <button class="btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Создать сделку</button>
+    </div>
+    <p class="sub">Свёртка длинного списка связанных заявок в ячейке: высота строки держится фиксированной, остаток уходит в счётчик. Паттерн переключается в харнессе сверху.</p>
+    <div class="filters">
+      <label class="fld"><span>Канал</span><span class="pill">Все</span></label>
+      <label class="fld"><span>Статус</span><span class="pill">Все</span></label>
+      <label class="fld"><span>Наименование</span><span class="pill ph">Поиск…</span></label>
+      <label class="fld"><span>ИНН</span><span class="pill ph">Поиск…</span></label>
+      <label class="fld"><span>Номер заявки</span><span class="pill ph">Поиск…</span></label>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="panel">
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>ID источника</th>
+            <th>Наименование</th>
+            <th>ИНН</th>
+            <th>Статус</th>
+            <th>Связанные заявки</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  var VISIBLE = 3;
+
+  function gen(prefix, start, n){ var o=[]; for(var i=0;i<n;i++) o.push(prefix+"_"+(start+i)); return o; }
+
+  var ROWS = [
+    { id:"SRC-48021", name:"ООО «Караван-Строй»", inn:"7701234567", st:["confirmed","Активна"], reqs:gen("260722",1,47) },
+    { id:"SRC-48022", name:"ИП Рахимов А. К.",     inn:"7718006501", st:["pending","Ожидает"],   reqs:gen("260730",1,6) },
+    { id:"SRC-48023", name:"ООО «ТрансМиграция»",  inn:"5003112204", st:["confirmed","Активна"], reqs:gen("260801",1,12) },
+    { id:"SRC-48024", name:"ООО «ГринФилд Агро»",  inn:"6164099812", st:["draft","Черновик"],    reqs:gen("260806",1,2) },
+    { id:"SRC-48025", name:"ЗАО «Восток-Логистик»",inn:"7736291047", st:["confirmed","Активна"], reqs:gen("260810",1,23) }
+  ];
+
+  var stClass = { confirmed:"st-confirmed", pending:"st-pending", draft:"st-draft" };
+  var tbody = document.getElementById("tbody");
+  var mode = "chip";
+
+  function tag(t){ return '<span class="tag-req mono">'+t+'</span>'; }
+
+  function cellChip(row, idx){
+    var shown = row.reqs.slice(0,VISIBLE).map(tag).join("");
+    var rest = row.reqs.length - VISIBLE;
+    if(rest<=0) return '<div class="req-list">'+shown+'</div>';
+    return '<div class="req-list">'+shown+
+      '<button class="more" data-row="'+idx+'" aria-haspopup="dialog" aria-label="Ещё '+rest+' заявок">+'+rest+'</button></div>';
+  }
+  function cellInline(row, idx){
+    var rest = row.reqs.length - VISIBLE;
+    var expanded = row._open===true;
+    var list = expanded ? row.reqs : row.reqs.slice(0,VISIBLE);
+    var html = '<div class="req-list">'+list.map(tag).join("")+'</div>';
+    if(rest>0) html += '<button class="linkmore" data-toggle="'+idx+'">'+(expanded?"Свернуть":"Показать все ("+row.reqs.length+")")+'</button>';
+    return html;
+  }
+
+  function render(){
+    tbody.innerHTML="";
+    ROWS.forEach(function(row, idx){
+      var tr=document.createElement("tr");
+      tr.innerHTML=
+        '<td class="mono muted">'+row.id+'</td>'+
+        '<td class="name">'+row.name+'</td>'+
+        '<td class="mono muted">'+row.inn+'</td>'+
+        '<td><span class="status '+stClass[row.st[0]]+'"><span class="dot"></span>'+row.st[1]+'</span></td>'+
+        '<td class="reqcell">'+(mode==="chip"?cellChip(row,idx):cellInline(row,idx))+'</td>';
+      tbody.appendChild(tr);
+    });
+  }
+
+  /* ---- popover ---- */
+  var pop=null;
+  function closePop(){ if(pop){ pop.remove(); pop=null; document.removeEventListener("keydown",onEsc); } }
+  function onEsc(e){ if(e.key==="Escape") closePop(); }
+  function openPop(btn, row){
+    closePop();
+    pop=document.createElement("div");
+    pop.className="pop"; pop.setAttribute("role","dialog");
+    pop.setAttribute("aria-label","Связанные заявки — "+row.name);
+    pop.innerHTML=
+      '<div class="pop-head"><div class="pop-title">Заявки · '+row.reqs.length+'</div>'+
+      '<input class="pop-search" type="text" placeholder="Поиск по номеру…" aria-label="Поиск заявки"></div>'+
+      '<div class="pop-body"></div>'+
+      '<div class="pop-foot"><a href="#deal">Открыть сделку '+row.id+' →</a></div>';
+    document.body.appendChild(pop);
+
+    var body=pop.querySelector(".pop-body");
+    function fill(q){
+      body.innerHTML="";
+      row.reqs.filter(function(r){ return r.indexOf(q)!==-1; }).forEach(function(r){
+        var a=document.createElement("a"); a.href="#"; a.className="mono"; a.textContent=r;
+        a.addEventListener("click",function(e){ e.preventDefault(); });
+        body.appendChild(a);
+      });
+      if(!body.children.length) body.innerHTML='<a style="grid-column:1/-1;color:var(--muted2)">Ничего не найдено</a>';
+    }
+    fill("");
+    var search=pop.querySelector(".pop-search");
+    search.addEventListener("input",function(){ fill(this.value.trim()); });
+
+    var r=btn.getBoundingClientRect();
+    var top=r.bottom+8, left=r.left;
+    var pr=pop.getBoundingClientRect();
+    if(left+pr.width>window.innerWidth-12) left=window.innerWidth-pr.width-12;
+    if(top+pr.height>window.innerHeight-12) top=r.top-pr.height-8;
+    pop.style.top=Math.max(12,top)+"px";
+    pop.style.left=Math.max(12,left)+"px";
+    setTimeout(function(){ search.focus(); },0);
+    document.addEventListener("keydown",onEsc);
+  }
+
+  document.addEventListener("click",function(e){
+    var more=e.target.closest(".more");
+    var toggle=e.target.closest(".linkmore");
+    if(more){ openPop(more, ROWS[+more.dataset.row]); return; }
+    if(toggle){ var i=+toggle.dataset.toggle; ROWS[i]._open=!ROWS[i]._open; render(); return; }
+    if(pop && !e.target.closest(".pop")) closePop();
+  });
+  window.addEventListener("resize", closePop);
+  window.addEventListener("scroll", closePop, true);
+
+  /* ---- переключатель паттерна ---- */
+  var HINTS = {
+    chip:  '<b>Чип + popover:</b> 3 заявки + счётчик «+N». Клик открывает список со скроллом и поиском — высота строки не меняется никогда.',
+    inline:'<b>Инлайн-разворот:</b> «Показать все» разворачивает ячейку в строке. Проще, но строка прыгает по высоте — видно на сделке с 47 заявками.'
+  };
+  var hint=document.getElementById("hint");
+  document.querySelectorAll("#patternSeg button").forEach(function(b){
+    b.addEventListener("click",function(){
+      mode=b.dataset.pat; closePop();
+      document.querySelectorAll("#patternSeg button").forEach(function(x){ x.setAttribute("aria-pressed", x===b); });
+      if(mode==="chip") ROWS.forEach(function(r){ r._open=false; });
+      hint.innerHTML=HINTS[mode];
+      render();
+    });
+  });
+  hint.innerHTML=HINTS.chip;
+
+  /* ---- меню прототипов ---- */
+  (function(){
+    var pm=document.getElementById("protoMenu"); if(!pm) return;
+    var trig=pm.querySelector(".pm-trigger"), p=pm.querySelector(".pm-pop");
+    function close(){ p.hidden=true; trig.setAttribute("aria-expanded","false"); }
+    function open(){ p.hidden=false; trig.setAttribute("aria-expanded","true"); }
+    trig.addEventListener("click",function(e){ e.stopPropagation(); p.hidden?open():close(); });
+    document.addEventListener("click",function(e){ if(!pm.contains(e.target)) close(); });
+    document.addEventListener("keydown",function(e){ if(e.key==="Escape") close(); });
+  })();
+
+  /* ---- glass-эффект шапки при скролле ---- */
+  function syncTopnav(){ var h=document.querySelector(".topnav").offsetHeight; document.documentElement.style.setProperty("--topnav-h", h+"px"); }
+  window.addEventListener("resize", syncTopnav); syncTopnav();
+  window.addEventListener("scroll", function(){ document.body.classList.toggle("scrolled", window.scrollY>4); }, {passive:true});
+
+  render();
+</script>
+</body>
+</html>

@@ -238,6 +238,26 @@
   .collapse .cv{color:var(--muted)}
 
   .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+
+  /* ---------- меню переключения прототипов (общее для страниц) ---------- */
+  .proto-menu{position:relative; flex:none}
+  .pm-trigger{appearance:none; display:inline-flex; align-items:center; gap:8px; cursor:pointer;
+    font-family:inherit; font-size:12.5px; font-weight:600; color:#fff;
+    background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:9px; padding:6px 11px}
+  .pm-trigger:hover{border-color:var(--line-strong)}
+  .pm-trigger:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  .pm-chev{width:13px;height:13px;color:var(--muted); transition:transform .15s}
+  .pm-trigger[aria-expanded="true"] .pm-chev{transform:rotate(180deg)}
+  .pm-pop{position:absolute; top:calc(100% + 8px); left:0; z-index:60; min-width:270px;
+    background:var(--panel-solid); border:1px solid var(--line-strong); border-radius:12px;
+    box-shadow:0 20px 50px -14px rgba(0,0,0,.7); padding:6px; display:flex; flex-direction:column; gap:2px}
+  .pm-pop a{display:flex; align-items:flex-start; gap:10px; padding:9px 10px; border-radius:8px; color:#fff; font-size:13px; font-weight:500}
+  .pm-pop a:hover{background:rgba(255,255,255,.06)}
+  .pm-pop a .pm-ic{width:16px;height:16px;color:var(--muted);flex:none;margin-top:1px}
+  .pm-pop a small{display:block;color:var(--muted);font-size:11px;font-weight:400;margin-top:2px;line-height:1.35}
+  .pm-pop a[aria-current="page"]{background:var(--primary-dim)}
+  .pm-pop a[aria-current="page"] .pm-ic{color:var(--primary)}
+
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -246,6 +266,25 @@
 <div class="harness">
   <div class="harness-row">
     <span class="tag">Прототип</span>
+
+    <!-- меню переключения фич -->
+    <div class="proto-menu" id="protoMenu">
+      <button class="pm-trigger" aria-haspopup="menu" aria-expanded="false">
+        <span class="pm-cur">Перевод свободных полей</span>
+        <svg class="pm-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="pm-pop" role="menu" hidden>
+        <a role="menuitem" href="index.html" aria-current="page">
+          <svg class="pm-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 8h14M5 12h14M5 16h9"/><path d="M15.5 4.5l4 4"/></svg>
+          <span>Перевод свободных полей<small>Роли, паттерны контрола, правка и подтверждение</small></span>
+        </a>
+        <a role="menuitem" href="related-requests.html">
+          <svg class="pm-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 4v16"/></svg>
+          <span>Связанные заявки<small>Свёртка длинного списка в ячейке таблицы</small></span>
+        </a>
+      </div>
+    </div>
+
     <div class="ctl">
       <span class="lbl">Роль / ЛК</span>
       <div class="seg" id="roleSeg" role="group" aria-label="Роль">
@@ -640,6 +679,17 @@ function onScroll(){
 }
 window.addEventListener("scroll", onScroll, {passive:true});
 window.addEventListener("resize", onScroll);
+
+/* меню переключения прототипов */
+(function(){
+  const pm=document.getElementById("protoMenu"); if(!pm) return;
+  const trig=pm.querySelector(".pm-trigger"), pop=pm.querySelector(".pm-pop");
+  const close=()=>{ pop.hidden=true; trig.setAttribute("aria-expanded","false"); };
+  const open=()=>{ pop.hidden=false; trig.setAttribute("aria-expanded","true"); };
+  trig.addEventListener("click", e=>{ e.stopPropagation(); pop.hidden?open():close(); });
+  document.addEventListener("click", e=>{ if(!pm.contains(e.target)) close(); });
+  document.addEventListener("keydown", e=>{ if(e.key==="Escape") close(); });
+})();
 
 render();
 setHarnessH();
