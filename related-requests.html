@@ -148,14 +148,6 @@
   button.total:focus-visible{outline:2px solid var(--accent); outline-offset:1px; border-radius:4px}
   .dash{color:var(--muted2)}
 
-  /* DS-компонент Tag / Grey (Figma 1294:5030): рамка .2, радиус 6, 3×8, Commissioner 16/400, текст .6 */
-  .tag-ds{display:inline-flex; align-items:center; border:1px solid rgba(255,255,255,.2); border-radius:6px;
-    padding:3px 8px; font-size:16px; font-weight:400; line-height:normal; color:rgba(255,255,255,.6);
-    white-space:nowrap; font-variant-numeric:tabular-nums}
-  a.tag-ds{text-decoration:none; transition:.12s}
-  a.tag-ds:hover{color:rgba(255,255,255,.88); border-color:rgba(255,255,255,.38)}
-  a.tag-ds:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
-
   /* popover («сверх спека») */
   .pop{position:fixed; z-index:70; width:288px; max-height:346px; background:var(--panel-solid);
     border:1px solid var(--line-strong); border-radius:14px; box-shadow:0 22px 54px -14px rgba(0,0,0,.72);
@@ -321,7 +313,7 @@ function cellRequests(row, idx){
 function renderList(){
   var rows = ROWS.map(function(row, idx){
     return '<tr class="deal-row" data-deal="'+idx+'" title="Открыть карточку сделки">'+
-      '<td><span class="tag-ds">'+row.ref+'</span></td>'+
+      '<td class="mono muted">'+row.ref+'</td>'+
       '<td class="name">'+esc(row.name)+'</td>'+
       '<td class="mono muted">'+row.inn+'</td>'+
       '<td>'+row.channel+'</td>'+
@@ -371,7 +363,7 @@ function renderCard(idx){
     '</div>'+
     '<div class="bigpanel"><h2>Данные сделки</h2>'+
       '<div class="kv-grid">'+
-        kv("Референс платформы",'<span class="tag-ds">'+d.ref+'</span>')+
+        kv("Референс платформы",'<span class="mono">'+d.ref+'</span>')+
         kv("Статус", d.st[1])+
         kv("Канал заведения", d.channel)+
         kv("Способ создания", d.mode)+
@@ -418,7 +410,7 @@ function renderRequest(reqId, origin){
       '<h2 style="margin-top:28px">Связанная сделка</h2>'+
       '<div class="kv-grid">'+
         kv("Наименование", esc(d.name))+
-        kv("Референс сделки",'<a href="#card" data-card="'+hit.deal+'" class="tag-ds">'+d.ref+'</a>')+
+        kv("Референс сделки",'<a href="#card" data-card="'+hit.deal+'" class="mono">'+d.ref+'</a>')+
         kv("ИНН",'<span class="mono">'+d.inn+'</span>')+
         kv("Статус сделки", d.st[1])+
       '</div>'+
