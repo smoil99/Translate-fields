@@ -7,52 +7,51 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Commissioner:wght@400;500;600&display=swap">
 <title>Связанные заявки</title>
-<meta name="description" content="Кликабельный прототип свёртки длинного списка связанных заявок в ячейке таблицы сделок: чип + popover против inline-разворота">
+<meta name="description" content="Прототип по T-03 §3 (MR 428): колонка списка «2 референса + всего N» со ссылками, карточка сделки со всеми кликабельными заявками, экран заявки с возвратом">
 <style>
-  /* Layout: тёмная таблица сделок как в портале; строки фикс. высоты, остаток заявок — в счётчик; сверху общий харнесс прототипа */
+  /* Layout: портал мигрантов — список сделок → карточка сделки → экран заявки; колонка «связанные заявки» по T-03 §3 (MR 428) */
   :root{
     color-scheme: dark;
-    --bg:#181C1F;
-    --panel:rgba(255,255,255,.045); --panel-solid:#26292C;
-    --card:rgba(255,255,255,.045); --card2:rgba(255,255,255,.03);
-    --line:rgba(255,255,255,.08); --line-strong:rgba(255,255,255,.14);
-    --text:#ffffff; --muted:#8A9092; --muted2:#6E767A;
-    --primary:#07BBB2; --primary-dim:rgba(7,187,178,.14);
+    --bg:#15282B;
+    --panel:rgba(255,255,255,.04); --panel-solid:#243034;
+    --line:rgba(255,255,255,.08); --line-strong:rgba(255,255,255,.15);
+    --text:#eef4f3; --muted:#90a0a1; --muted2:#6f8081;
+    --primary:#2ad3c4; --primary-dim:rgba(42,211,196,.14); --primary-ink:#06312c;
     --accent:#61C7D6;
-    --glass:rgba(24,28,31,.62);
-    --st-confirmed:#3FBF87; --st-pending:#E5B34A; --st-draft:#8FA6C9;
-    --radius:16px;
+    --glass:rgba(21,40,43,.72);
+    --st-neutral:#b9c6c6; --st-confirmed:#4fd39a; --st-pending:#e5bd5a; --st-draft:#8FA6C9;
+    --radius:18px;
     --f: "Commissioner", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   }
   *{box-sizing:border-box}
   html,body{margin:0}
   body{
     font-family:var(--f); color:var(--text);
-    background: url("bg.webp") top center / cover no-repeat, var(--bg);
-    background-attachment: fixed;
-    -webkit-font-smoothing:antialiased;
-    font-size:14px; line-height:1.45;
+    background:
+      radial-gradient(1100px 520px at 72% -8%, #1c5a56 0%, transparent 60%),
+      radial-gradient(820px 560px at 8% 108%, #123f42 0%, transparent 55%),
+      linear-gradient(165deg, #183035, #12252a);
+    background-attachment:fixed; -webkit-font-smoothing:antialiased; font-size:14px; line-height:1.45;
   }
   a{color:var(--primary); text-decoration:none}
   [hidden]{display:none!important}
-  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
 
   /* ---------- харнесс прототипа ---------- */
-  .harness{background:rgba(20,23,26,.94); border-bottom:1px solid var(--line); padding:10px clamp(16px,4vw,40px)}
-  .harness-row{display:flex; flex-wrap:wrap; align-items:center; gap:14px 22px; max-width:1240px; margin:0 auto}
+  .harness{background:rgba(14,22,24,.92); border-bottom:1px solid var(--line); padding:10px clamp(16px,4vw,40px)}
+  .harness-row{display:flex; flex-wrap:wrap; align-items:center; gap:14px 22px; max-width:1320px; margin:0 auto}
   .harness .tag{font-size:10px; letter-spacing:.14em; font-weight:600; color:var(--primary);
-    border:1px solid rgba(7,187,178,.5); border-radius:5px; padding:3px 8px; text-transform:uppercase}
+    border:1px solid rgba(42,211,196,.5); border-radius:5px; padding:3px 8px; text-transform:uppercase}
   .ctl{display:flex; align-items:center; gap:9px; min-width:0}
   .ctl > span.lbl{font-size:11px; color:var(--muted); letter-spacing:.04em; white-space:nowrap}
   .seg{display:inline-flex; background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:9px; padding:3px}
   .seg button{appearance:none; border:0; background:transparent; color:var(--muted);
     font-family:inherit; font-size:12.5px; font-weight:500; padding:6px 11px; border-radius:6px; cursor:pointer; white-space:nowrap; transition:.12s}
   .seg button:hover{color:#fff}
-  .seg button[aria-pressed="true"]{background:var(--primary); color:#04231f; font-weight:600}
-  .hint{font-size:11.5px; color:var(--muted2); flex:1 1 240px; min-width:0}
+  .seg button[aria-pressed="true"]{background:var(--primary); color:var(--primary-ink); font-weight:600}
+  .hint{font-size:11.5px; color:var(--muted2); flex:1 1 260px; min-width:0}
   .hint b{color:var(--muted); font-weight:500}
 
-  /* ---------- меню переключения прототипов (общее для страниц) ---------- */
+  /* ---------- меню переключения прототипов ---------- */
   .proto-menu{position:relative; flex:none}
   .pm-trigger{appearance:none; display:inline-flex; align-items:center; gap:8px; cursor:pointer;
     font-family:inherit; font-size:12.5px; font-weight:600; color:#fff;
@@ -61,7 +60,7 @@
   .pm-trigger:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
   .pm-chev{width:13px;height:13px;color:var(--muted); transition:transform .15s}
   .pm-trigger[aria-expanded="true"] .pm-chev{transform:rotate(180deg)}
-  .pm-pop{position:absolute; top:calc(100% + 8px); left:0; z-index:60; min-width:270px;
+  .pm-pop{position:absolute; top:calc(100% + 8px); left:0; z-index:60; min-width:290px;
     background:var(--panel-solid); border:1px solid var(--line-strong); border-radius:12px;
     box-shadow:0 20px 50px -14px rgba(0,0,0,.7); padding:6px; display:flex; flex-direction:column; gap:2px}
   .pm-pop a{display:flex; align-items:flex-start; gap:10px; padding:9px 10px; border-radius:8px; color:#fff; font-size:13px; font-weight:500}
@@ -71,98 +70,116 @@
   .pm-pop a[aria-current="page"]{background:var(--primary-dim)}
   .pm-pop a[aria-current="page"] .pm-ic{color:var(--primary)}
 
-  /* ---------- верхняя навигация ЛК ---------- */
+  /* ---------- верхняя навигация портала ---------- */
   .topnav{position:sticky; top:env(safe-area-inset-top,0px); z-index:35;
     background:transparent; border-bottom:1px solid transparent; padding:0 clamp(16px,4vw,40px);
     transition:background .22s ease, border-color .22s ease}
-  body.scrolled .topnav{background:var(--glass);
-    -webkit-backdrop-filter:blur(16px) saturate(1.4); backdrop-filter:blur(16px) saturate(1.4); border-bottom-color:var(--line)}
-  .topnav-in{max-width:1240px; margin:0 auto; height:54px; display:flex; align-items:center; gap:26px}
-  .brand-links{display:flex; gap:22px; align-items:center}
-  .brand-links a{display:flex; align-items:center; gap:7px; color:var(--muted); font-weight:500; font-size:13.5px}
-  .brand-links a.active{color:#fff}
-  .brand-links .ic{width:15px;height:15px;opacity:.75}
-  .who{margin-left:auto; display:flex; align-items:center; gap:10px}
-  .who .av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#1c3a44,#0f2129); display:grid;place-items:center;color:var(--accent);font-size:12px}
-  .who .nm{font-size:13px;font-weight:600;line-height:1.1}
-  .who .rl{font-size:11px;color:var(--muted)}
-
-  /* ---------- шапка раздела ---------- */
-  .lk-header{position:sticky; top:calc(var(--topnav-h,54px) + env(safe-area-inset-top,0px)); z-index:30;
-    background:transparent; transition:background .22s ease, box-shadow .22s ease}
-  body.scrolled .lk-header{background:var(--glass);
-    -webkit-backdrop-filter:blur(16px) saturate(1.4); backdrop-filter:blur(16px) saturate(1.4); box-shadow:0 12px 34px -22px rgba(0,0,0,.8)}
-  .lk-header-in{max-width:1240px; margin:0 auto; padding:16px clamp(16px,4vw,40px) 0}
-  .crumbs{font-size:12.5px; color:var(--muted); margin-bottom:12px}
-  .head{display:flex; align-items:center; gap:14px; flex-wrap:wrap}
-  h1{font-size:clamp(22px,3vw,30px); font-weight:600; letter-spacing:-.5px; margin:0; text-wrap:balance}
-  .sub{color:var(--muted); font-size:13.5px; margin:10px 0 0; max-width:66ch; line-height:1.5}
-  .btn-primary{margin-left:auto; display:inline-flex; align-items:center; gap:7px; background:var(--primary); color:#04231f;
-    font-family:inherit; font-weight:600; font-size:13.5px; border:0; border-radius:10px; padding:9px 15px; cursor:pointer}
-  .btn-primary:hover{filter:brightness(1.07)}
-  @media (max-width:560px){ .btn-primary{margin-left:0} }
-
-  /* фильтры (декоративные, как в портале) */
-  .filters{display:flex; flex-wrap:wrap; gap:10px; margin-top:18px}
-  .filters .fld{display:flex; flex-direction:column; gap:4px}
-  .filters .fld span{font-size:10.5px; color:var(--muted2); letter-spacing:.03em}
-  .filters .pill{background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:999px;
-    color:#cfd6d7; font-size:12.5px; padding:8px 14px; min-width:120px; display:flex; align-items:center; justify-content:space-between; gap:8px}
-  .filters .pill.ph{color:var(--muted2)}
+  body.scrolled .topnav{background:var(--glass); -webkit-backdrop-filter:blur(16px) saturate(1.4); backdrop-filter:blur(16px) saturate(1.4); border-bottom-color:var(--line)}
+  .topnav-in{max-width:1320px; margin:0 auto; height:60px; display:flex; align-items:center; gap:22px}
+  .nav-links{display:flex; gap:20px; align-items:center; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none}
+  .nav-links::-webkit-scrollbar{display:none}
+  .nav-links a{color:var(--muted); font-weight:500; font-size:13.5px; white-space:nowrap}
+  .nav-links a.active{color:#fff}
+  .nav-links a.new{color:var(--primary); display:inline-flex; align-items:center; gap:4px}
+  .who{margin-left:auto; display:flex; align-items:center; gap:10px; white-space:nowrap}
+  .who .nm{font-size:13.5px;font-weight:600;line-height:1.1; text-align:right}
+  .who .rl{font-size:11.5px;color:var(--muted); text-align:right}
+  .who .chev{color:var(--muted); width:16px; height:16px}
 
   /* ---------- контейнер ---------- */
-  .wrap{max-width:1240px; margin:0 auto; padding:0 clamp(16px,4vw,40px) 70px}
+  .wrap{max-width:1320px; margin:0 auto; padding:22px clamp(16px,4vw,40px) 70px}
 
-  .panel{margin-top:22px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden}
+  /* ---------- шапка экрана ---------- */
+  .backpill{appearance:none; font-family:inherit; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+    background:rgba(255,255,255,.06); border:1px solid var(--line); color:#dfe8e7; font-size:13.5px; font-weight:500;
+    padding:9px 16px 9px 13px; border-radius:999px}
+  .backpill:hover{background:rgba(255,255,255,.1)}
+  .backpill svg{width:16px;height:16px}
+  .screen-head{display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin:18px 0 20px}
+  h1{font-size:clamp(22px,2.4vw,28px); font-weight:600; letter-spacing:-.4px; margin:0; font-variant-numeric:tabular-nums}
+  .acts{margin-left:auto; display:flex; gap:10px; flex-wrap:wrap}
+  .btn{appearance:none; font-family:inherit; cursor:pointer; font-size:13.5px; font-weight:600; border-radius:10px; padding:9px 15px;
+    display:inline-flex; align-items:center; gap:7px; border:1px solid var(--line-strong); background:rgba(255,255,255,.05); color:#eef4f3}
+  .btn:hover{background:rgba(255,255,255,.1)}
+  .btn svg{width:15px;height:15px}
+  .btn.primary{background:var(--primary); color:var(--primary-ink); border-color:transparent}
+  .btn.primary:hover{filter:brightness(1.07)}
+  @media (max-width:760px){ .acts{margin-left:0; width:100%} }
+
+  .status{display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:500; padding:5px 13px; border-radius:999px; white-space:nowrap;
+    background:rgba(255,255,255,.07); color:var(--st-neutral); border:1px solid var(--line)}
+  .status .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .status.s-confirmed{color:var(--st-confirmed)} .status.s-pending{color:var(--st-pending)} .status.s-draft{color:var(--st-draft)}
+
+  /* ---------- список сделок ---------- */
+  .ttl-row{display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:6px}
+  .btn-create{margin-left:auto}
+  .sub{color:var(--muted); font-size:13.5px; margin:8px 0 0; max-width:74ch; line-height:1.5}
+  .filters{display:flex; flex-wrap:wrap; gap:10px; margin:18px 0 0}
+  .filters .fld{display:flex; flex-direction:column; gap:4px}
+  .filters .fld span{font-size:10.5px; color:var(--muted2); letter-spacing:.03em}
+  .filters .pill{background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:999px; color:#cfd9d8; font-size:12.5px;
+    padding:8px 14px; min-width:116px; display:flex; align-items:center; justify-content:space-between; gap:8px}
+  .filters .pill.ph{color:var(--muted2)}
+
+  .panel{margin-top:20px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden}
   .scroll{overflow-x:auto}
-  table{width:100%; border-collapse:collapse; min-width:760px}
+  table{width:100%; border-collapse:collapse; min-width:820px}
   thead th{text-align:left; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted2);
-    font-weight:600; padding:16px 20px; white-space:nowrap; border-bottom:1px solid var(--line)}
-  tbody td{padding:15px 20px; font-size:13.5px; border-bottom:1px solid var(--line); vertical-align:top}
+    font-weight:600; padding:16px 22px; white-space:nowrap; border-bottom:1px solid var(--line)}
+  tbody td{padding:15px 22px; font-size:13.5px; border-bottom:1px solid var(--line); vertical-align:top}
   tbody tr:last-child td{border-bottom:0}
-  tbody tr:hover{background:rgba(255,255,255,.025)}
-  .mono{font-variant-numeric:tabular-nums; font-feature-settings:"tnum"}
+  tbody tr.deal-row{cursor:pointer}
+  tbody tr.deal-row:hover{background:rgba(255,255,255,.03)}
+  .mono{font-variant-numeric:tabular-nums}
   .name{font-weight:550}
   .muted{color:var(--muted)}
+  .rowhint{color:var(--muted2); font-size:11px; opacity:0; transition:.12s; white-space:nowrap}
+  tbody tr.deal-row:hover .rowhint{opacity:1}
 
-  .status{display:inline-flex; align-items:center; gap:7px; font-size:12px; padding:4px 11px; border-radius:999px; white-space:nowrap}
-  .status .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
-  .st-confirmed{color:var(--st-confirmed); background:rgba(63,191,135,.1)}
-  .st-pending{color:var(--st-pending); background:rgba(229,179,74,.1)}
-  .st-draft{color:var(--st-draft); background:rgba(143,166,201,.1)}
+  /* колонка «Связанные заявки» (T-03 §3) */
+  .reqcell{min-width:240px; line-height:1.85}
+  .reqlink{font-variant-numeric:tabular-nums; border-radius:4px; padding:1px 2px}
+  .reqlink:hover{text-decoration:underline}
+  .reqlink:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+  .total{color:var(--muted); font-size:12.5px}
+  button.total{appearance:none; border:0; background:transparent; font:inherit; cursor:pointer; color:var(--primary); padding:0}
+  button.total:hover{text-decoration:underline}
+  button.total:focus-visible{outline:2px solid var(--accent); outline-offset:1px; border-radius:4px}
+  .dash{color:var(--muted2)}
 
-  /* ячейка «Связанные заявки» */
-  .reqcell{min-width:240px}
-  .req-list{display:flex; flex-wrap:wrap; gap:6px; align-items:center}
-  .tag-req{font-size:12.5px; padding:4px 9px; border-radius:8px; background:rgba(255,255,255,.04);
-    border:1px solid var(--line); color:#dfe5e6; white-space:nowrap}
-  .more{appearance:none; font:inherit; cursor:pointer; font-size:12.5px; font-weight:600; padding:4px 10px; border-radius:8px;
-    background:var(--primary-dim); border:1px solid rgba(7,187,178,.4); color:var(--primary);
-    display:inline-flex; align-items:center; gap:4px; transition:background .15s}
-  .more:hover{background:rgba(7,187,178,.22)}
-  .more:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
-  .linkmore{appearance:none; border:0; background:transparent; font:inherit; cursor:pointer;
-    font-size:12.5px; font-weight:600; color:var(--primary); padding:4px 0 0; text-align:left; display:block}
-  .linkmore:hover{text-decoration:underline}
-  .linkmore:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px}
-
-  /* popover */
-  .pop{position:fixed; z-index:70; width:280px; max-height:344px; background:var(--panel-solid);
+  /* popover («сверх спека») */
+  .pop{position:fixed; z-index:70; width:288px; max-height:346px; background:var(--panel-solid);
     border:1px solid var(--line-strong); border-radius:14px; box-shadow:0 22px 54px -14px rgba(0,0,0,.72);
     overflow:hidden; display:flex; flex-direction:column; animation:pop .12s ease-out}
   @keyframes pop{from{opacity:0; transform:translateY(-4px)}}
   .pop-head{padding:12px 14px 10px; border-bottom:1px solid var(--line)}
   .pop-title{font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted2)}
-  .pop-search{width:100%; margin-top:10px; background:rgba(0,0,0,.3); border:1px solid var(--line); border-radius:9px;
-    color:#fff; font:inherit; font-size:13px; padding:8px 10px}
+  .pop-search{width:100%; margin-top:10px; background:rgba(0,0,0,.3); border:1px solid var(--line); border-radius:9px; color:#fff; font:inherit; font-size:13px; padding:8px 10px}
   .pop-search:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
   .pop-body{overflow-y:auto; padding:6px; display:grid; grid-template-columns:1fr 1fr; gap:4px}
-  .pop-body a{font-size:12.5px; color:#dfe5e6; text-decoration:none; padding:7px 9px; border-radius:8px; display:block;
-    white-space:nowrap; font-variant-numeric:tabular-nums}
+  .pop-body a{font-size:12.5px; color:#dfe8e7; padding:7px 9px; border-radius:8px; display:block; white-space:nowrap; font-variant-numeric:tabular-nums}
   .pop-body a:hover{background:var(--primary-dim); color:var(--primary)}
   .pop-foot{padding:10px 14px; border-top:1px solid var(--line)}
   .pop-foot a{color:var(--primary); font-size:12.5px; font-weight:600}
   .pop-foot a:hover{text-decoration:underline}
+
+  /* ---------- карточка сделки / экран заявки ---------- */
+  .bigpanel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:26px clamp(18px,2.6vw,34px)}
+  .bigpanel h2{font-size:18px; font-weight:600; margin:0 0 22px; letter-spacing:-.2px}
+  .kv-grid{display:grid; grid-template-columns:1fr 1fr; gap:22px 48px}
+  @media (max-width:760px){ .kv-grid{grid-template-columns:1fr; gap:16px} }
+  .kv{display:flex; flex-direction:column; gap:5px}
+  .kv .k{font-size:12px; color:var(--muted)}
+  .kv .v{font-size:15.5px; color:#eef4f3}
+  .kv .v.dim{color:var(--muted2)}
+  .kv.wide{grid-column:1 / -1}
+  .req-inline{line-height:1.95; font-size:14px}
+  .req-inline a{font-variant-numeric:tabular-nums; border-radius:4px; padding:0 2px}
+  .req-inline a:hover{text-decoration:underline}
+  .req-count{display:inline-flex; align-items:center; font-size:12px; font-weight:500; color:var(--muted);
+    background:rgba(255,255,255,.07); border-radius:999px; padding:2px 10px; margin-left:8px; vertical-align:2px}
+  .empty{color:var(--muted2); font-size:14px}
 
   @media (max-width:560px){ .pop{width:calc(100vw - 32px)} }
   @media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
@@ -174,7 +191,6 @@
   <div class="harness-row">
     <span class="tag">Прототип</span>
 
-    <!-- меню переключения фич -->
     <div class="proto-menu" id="protoMenu">
       <button class="pm-trigger" aria-haspopup="menu" aria-expanded="false">
         <span class="pm-cur">Связанные заявки</span>
@@ -187,212 +203,308 @@
         </a>
         <a role="menuitem" href="related-requests.html" aria-current="page">
           <svg class="pm-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 4v16"/></svg>
-          <span>Связанные заявки<small>Свёртка длинного списка в ячейке таблицы</small></span>
+          <span>Связанные заявки<small>Колонка «2 + всего N» · карточка · экран заявки (T-03 §3)</small></span>
         </a>
       </div>
     </div>
 
-    <div class="ctl" id="patternCtl">
-      <span class="lbl">Паттерн свёртки</span>
-      <div class="seg" id="patternSeg" role="group" aria-label="Паттерн свёртки">
-        <button data-pat="chip" aria-pressed="true">Чип + popover</button>
-        <button data-pat="inline" aria-pressed="false">Инлайн-разворот</button>
+    <div class="ctl">
+      <span class="lbl">Вид колонки списка</span>
+      <div class="seg" id="modeSeg" role="group" aria-label="Вид колонки «связанные заявки»">
+        <button data-mode="spec" aria-pressed="true">По MR 428</button>
+        <button data-mode="pop" aria-pressed="false">+ popover (сверх спека)</button>
       </div>
     </div>
     <p class="hint" id="hint"></p>
   </div>
 </div>
 
-<!-- ============ НАВИГАЦИЯ ЛК ============ -->
+<!-- ============ НАВИГАЦИЯ ПОРТАЛА ============ -->
 <nav class="topnav">
   <div class="topnav-in">
-    <div class="brand-links">
-      <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span>Главная</span></a>
-      <a href="#" class="active"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 4v16"/></svg><span>Сделки</span></a>
-      <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span>Заявки</span></a>
+    <div class="nav-links">
+      <a href="#">Организации</a>
+      <a href="#">Ожидают подтверждения</a>
+      <a href="#">Дашборд</a>
+      <a href="#" class="active">Сделки</a>
+      <a href="#">Заявки</a>
+      <a href="#">Отчёты</a>
+      <a href="#" class="new"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Новая заявка</a>
+      <a href="#">Аудит</a>
+      <a href="#">Справочники</a>
     </div>
     <div class="who">
-      <div class="av">АД</div>
-      <div>
-        <div class="nm">Platform</div>
-        <div class="rl">Администратор</div>
-      </div>
+      <div><div class="nm">Platform</div><div class="rl">Администратор</div></div>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
     </div>
   </div>
 </nav>
 
-<!-- ============ ШАПКА РАЗДЕЛА ============ -->
-<header class="lk-header">
-  <div class="lk-header-in">
-    <div class="crumbs">Сделки</div>
-    <div class="head">
-      <h1>Сделки</h1>
-      <button class="btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Создать сделку</button>
-    </div>
-    <p class="sub">Свёртка длинного списка связанных заявок в ячейке: высота строки держится фиксированной, остаток уходит в счётчик. Паттерн переключается в харнессе сверху.</p>
-    <div class="filters">
-      <label class="fld"><span>Канал</span><span class="pill">Все</span></label>
-      <label class="fld"><span>Статус</span><span class="pill">Все</span></label>
-      <label class="fld"><span>Наименование</span><span class="pill ph">Поиск…</span></label>
-      <label class="fld"><span>ИНН</span><span class="pill ph">Поиск…</span></label>
-      <label class="fld"><span>Номер заявки</span><span class="pill ph">Поиск…</span></label>
-    </div>
-  </div>
-</header>
-
-<div class="wrap">
-  <div class="panel">
-    <div class="scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>ID источника</th>
-            <th>Наименование</th>
-            <th>ИНН</th>
-            <th>Статус</th>
-            <th>Связанные заявки</th>
-          </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
+<div class="wrap" id="content"></div>
 
 <script>
-  var VISIBLE = 3;
+/* ================= данные ================= */
+function gen(prefix, start, n){
+  var o=[]; for(var i=0;i<n;i++){ o.push({ id:prefix+"-"+(start+i), ref:prefix+"_"+(start+i) }); } return o; /* порядок = created_at ASC */
+}
+var ROWS = [
+  { id:"SRC-48021", ref:"L26072026001", channel:"Лид (L)", srcId:"—", extId:"—", name:"ООО «Караван-Строй»",
+    inn:"7701234567", phoneTkm:"+7 905 112-33-44", fioTkm:"Петров И. С.", contactPhone:"+7 905 400-10-20",
+    created:"26.07.2026 10:14", createdSrc:"—", mode:"Вручную", manualReason:"Заявка от партнёра вне СРМ+",
+    desc:"Электросварщики и монтажники для вахты, 40 чел., Ямал.",
+    st:["confirmed","Активна"], reqs:gen("260722",1,47) },
+  { id:"SRC-48022", ref:"S30072026004", channel:"Сайт (S)", srcId:"—", extId:"web-5521", name:"ИП Рахимов А. К.",
+    inn:"7718006501", phoneTkm:"+7 917 220-11-09", fioTkm:"Сидорова А. В.", contactPhone:"+7 917 777-00-55",
+    created:"30.07.2026 09:02", createdSrc:"30.07.2026 08:58", mode:"Автоматически", manualReason:"—",
+    desc:"Разнорабочие на склад, Москва.",
+    st:["pending","Ожидает"], reqs:gen("260730",1,6) },
+  { id:"SRC-48023", ref:"L01082026002", channel:"Лид (L)", srcId:"crm-9087", extId:"—", name:"ООО «ТрансМиграция»",
+    inn:"5003112204", phoneTkm:"+7 495 778-50-12", fioTkm:"Кузнецов Д. А.", contactPhone:"+7 495 778-50-99",
+    created:"01.08.2026 14:40", createdSrc:"01.08.2026 14:31", mode:"Автоматически", manualReason:"—",
+    desc:"Водители категории C/E.",
+    st:["confirmed","Активна"], reqs:gen("260801",1,12) },
+  { id:"SRC-48024", ref:"S06082026001", channel:"Сайт (S)", srcId:"—", extId:"web-6033", name:"ООО «ГринФилд Агро»",
+    inn:"6164099812", phoneTkm:"+7 863 300-44-77", fioTkm:"—", contactPhone:"+7 863 300-44-78",
+    created:"06.08.2026 08:21", createdSrc:"06.08.2026 08:19", mode:"Вручную", manualReason:"Повторная заявка клиента",
+    desc:"Сезонные рабочие, уборка урожая.",
+    st:["draft","Черновик"], reqs:gen("260806",1,2) },
+  { id:"SRC-48025", ref:"L10082026003", channel:"Лид (L)", srcId:"crm-9120", extId:"—", name:"ЗАО «Восток-Логистик»",
+    inn:"7736291047", phoneTkm:"+7 499 110-90-33", fioTkm:"Орлова Е. П.", contactPhone:"+7 499 110-90-34",
+    created:"10.08.2026 17:55", createdSrc:"10.08.2026 17:40", mode:"Автоматически", manualReason:"—",
+    desc:"Комплектовщики и операторы ПРР.",
+    st:["confirmed","Активна"], reqs:gen("260810",1,23) },
+  { id:"SRC-48026", ref:"S11082026002", channel:"Сайт (S)", srcId:"—", extId:"web-6110", name:"ООО «Новый Дом»",
+    inn:"7701998012", phoneTkm:"+7 926 500-20-10", fioTkm:"—", contactPhone:"+7 926 500-20-11",
+    created:"11.08.2026 11:30", createdSrc:"11.08.2026 11:28", mode:"Вручную", manualReason:"Клиент без ИНН в СРМ+",
+    desc:"Отделочники на объект, Подмосковье.",
+    st:["pending","Ожидает"], reqs:[] }   /* 0 связанных → «—» */
+];
 
-  function gen(prefix, start, n){ var o=[]; for(var i=0;i<n;i++) o.push(prefix+"_"+(start+i)); return o; }
+/* ================= состояние ================= */
+var mode = "spec";            // spec | pop — вид колонки списка
+var requestOrigin = "list";   // откуда открыт экран заявки: list | card
+var cardDeal = 0;             // индекс сделки на карточке
 
-  var ROWS = [
-    { id:"SRC-48021", name:"ООО «Караван-Строй»", inn:"7701234567", st:["confirmed","Активна"], reqs:gen("260722",1,47) },
-    { id:"SRC-48022", name:"ИП Рахимов А. К.",     inn:"7718006501", st:["pending","Ожидает"],   reqs:gen("260730",1,6) },
-    { id:"SRC-48023", name:"ООО «ТрансМиграция»",  inn:"5003112204", st:["confirmed","Активна"], reqs:gen("260801",1,12) },
-    { id:"SRC-48024", name:"ООО «ГринФилд Агро»",  inn:"6164099812", st:["draft","Черновик"],    reqs:gen("260806",1,2) },
-    { id:"SRC-48025", name:"ЗАО «Восток-Логистик»",inn:"7736291047", st:["confirmed","Активна"], reqs:gen("260810",1,23) }
-  ];
+var content = document.getElementById("content");
 
-  var stClass = { confirmed:"st-confirmed", pending:"st-pending", draft:"st-draft" };
-  var tbody = document.getElementById("tbody");
-  var mode = "chip";
+/* ================= helpers ================= */
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;"); }
+function findReq(reqId){
+  for(var i=0;i<ROWS.length;i++) for(var j=0;j<ROWS[i].reqs.length;j++) if(ROWS[i].reqs[j].id===reqId) return {deal:i, req:ROWS[i].reqs[j]};
+  return null;
+}
+var currentView = "list";
+function go(view){ currentView=view; closePop(); window.scrollTo(0,0); }
 
-  function tag(t){ return '<span class="tag-req mono">'+t+'</span>'; }
+/* ===== колонка «связанные заявки» по T-03 §3 ===== */
+function cellRequests(row, idx){
+  var N = row.reqs.length;
+  if(N===0) return '<span class="dash">—</span>';                     // 0 → «—»
+  var first = row.reqs.slice(0,2).map(function(r){
+    return '<a class="reqlink" href="#req" data-req="'+r.id+'">'+r.ref+'</a>';
+  }).join(", ");
+  var total = (mode==="pop")
+    ? '<button class="total" data-pop="'+idx+'">всего '+N+'</button>'   // сверх спека
+    : '<span class="total">всего '+N+'</span>';                        // по спеку — просто счётчик
+  return first + '… ' + total;                                        // «ref1, ref2… всего N»
+}
 
-  function cellChip(row, idx){
-    var shown = row.reqs.slice(0,VISIBLE).map(tag).join("");
-    var rest = row.reqs.length - VISIBLE;
-    if(rest<=0) return '<div class="req-list">'+shown+'</div>';
-    return '<div class="req-list">'+shown+
-      '<button class="more" data-row="'+idx+'" aria-haspopup="dialog" aria-label="Ещё '+rest+' заявок">+'+rest+'</button></div>';
-  }
-  function cellInline(row, idx){
-    var rest = row.reqs.length - VISIBLE;
-    var expanded = row._open===true;
-    var list = expanded ? row.reqs : row.reqs.slice(0,VISIBLE);
-    var html = '<div class="req-list">'+list.map(tag).join("")+'</div>';
-    if(rest>0) html += '<button class="linkmore" data-toggle="'+idx+'">'+(expanded?"Свернуть":"Показать все ("+row.reqs.length+")")+'</button>';
-    return html;
-  }
+/* ================= ЭКРАН: СПИСОК ================= */
+function renderList(){
+  var rows = ROWS.map(function(row, idx){
+    return '<tr class="deal-row" data-deal="'+idx+'" title="Открыть карточку сделки">'+
+      '<td class="mono muted">'+row.ref+'</td>'+
+      '<td class="name">'+esc(row.name)+'</td>'+
+      '<td class="mono muted">'+row.inn+'</td>'+
+      '<td>'+row.channel+'</td>'+
+      '<td><span class="status s-'+row.st[0]+'"><span class="dot"></span>'+row.st[1]+'</span></td>'+
+      '<td class="reqcell">'+cellRequests(row, idx)+'</td>'+
+      '<td class="rowhint">карточка →</td>'+
+    '</tr>';
+  }).join("");
 
-  function render(){
-    tbody.innerHTML="";
-    ROWS.forEach(function(row, idx){
-      var tr=document.createElement("tr");
-      tr.innerHTML=
-        '<td class="mono muted">'+row.id+'</td>'+
-        '<td class="name">'+row.name+'</td>'+
-        '<td class="mono muted">'+row.inn+'</td>'+
-        '<td><span class="status '+stClass[row.st[0]]+'"><span class="dot"></span>'+row.st[1]+'</span></td>'+
-        '<td class="reqcell">'+(mode==="chip"?cellChip(row,idx):cellInline(row,idx))+'</td>';
-      tbody.appendChild(tr);
+  content.innerHTML =
+    '<div class="ttl-row"><h1 style="font-variant-numeric:normal">Сделки</h1>'+
+      '<button class="btn primary btn-create"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Создать сделку</button></div>'+
+    '<p class="sub">Колонка «Связанные заявки» по T-03 §3 (MR 428): не более двух референсов по <span class="mono">created_at</span> ASC + «… всего N», референсы — ссылки на экран заявки. Весь список — в карточке сделки (клик по строке).</p>'+
+    '<div class="filters">'+
+      '<label class="fld"><span>Канал</span><span class="pill">Все</span></label>'+
+      '<label class="fld"><span>Статус</span><span class="pill">Все</span></label>'+
+      '<label class="fld"><span>Наименование</span><span class="pill ph">Поиск…</span></label>'+
+      '<label class="fld"><span>ИНН</span><span class="pill ph">Поиск…</span></label>'+
+      '<label class="fld"><span>Номер заявки</span><span class="pill ph">Поиск…</span></label>'+
+    '</div>'+
+    '<div class="panel"><div class="scroll"><table>'+
+    '<thead><tr><th>Референс</th><th>Наименование</th><th>ИНН</th><th>Канал</th><th>Статус</th><th>Связанные заявки</th><th></th></tr></thead>'+
+    '<tbody>'+rows+'</tbody></table></div></div>';
+  go("list");
+}
+
+/* ================= ЭКРАН: КАРТОЧКА СДЕЛКИ ================= */
+function kv(k,v,extra){ return '<div class="kv'+(extra?' '+extra:'')+'"><div class="k">'+k+'</div><div class="v">'+v+'</div></div>'; }
+
+function renderCard(idx){
+  cardDeal = idx; var d = ROWS[idx];
+  var reqs = d.reqs.length
+    ? '<div class="req-inline">'+d.reqs.map(function(r){ return '<a href="#req" data-req="'+r.id+'">'+r.ref+'</a>'; }).join(", ")+
+      '<span class="req-count">всего '+d.reqs.length+'</span></div>'
+    : '<div class="empty">—</div>';
+
+  content.innerHTML =
+    '<button class="backpill" data-nav="list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>К списку сделок</button>'+
+    '<div class="screen-head">'+
+      '<h1>'+d.ref+'</h1>'+
+      '<span class="status s-'+d.st[0]+'"><span class="dot"></span>'+d.st[1]+'</span>'+
+      '<div class="acts">'+
+        '<button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Изменить</button>'+
+        '<button class="btn primary">В статус «Подготовка КП»</button>'+
+        '<button class="btn">Закрыть с отказом</button>'+
+      '</div>'+
+    '</div>'+
+    '<div class="bigpanel"><h2>Данные сделки</h2>'+
+      '<div class="kv-grid">'+
+        kv("Референс платформы",'<span class="mono">'+d.ref+'</span>')+
+        kv("Статус", d.st[1])+
+        kv("Канал заведения", d.channel)+
+        kv("Способ создания", d.mode)+
+        kv("ID сделки в источнике",'<span class="mono'+(d.srcId==="—"?' dim':'')+'">'+d.srcId+'</span>')+
+        kv("Внешний ID источника",'<span class="mono'+(d.extId==="—"?' dim':'')+'">'+d.extId+'</span>')+
+        kv("Название сделки", '<span class="dim">—</span>')+
+        kv("Наименование компании", esc(d.name))+
+        kv("ИНН",'<span class="mono">'+d.inn+'</span>')+
+        kv("Телефон контактного лица",'<span class="mono">'+d.contactPhone+'</span>')+
+        kv("Телефон клиентского менеджера",'<span class="mono">'+d.phoneTkm+'</span>')+
+        kv("ФИО клиентского менеджера", d.fioTkm==="—"?'<span class="dim">—</span>':d.fioTkm)+
+        kv("Дата создания в источнике", d.createdSrc==="—"?'<span class="dim">—</span>':d.createdSrc)+
+        kv("Дата создания на платформе", d.created)+
+        kv("Связанные заявки", reqs, "wide")+
+        kv("Причина ручного создания", d.manualReason==="—"?'<span class="dim">—</span>':esc(d.manualReason))+
+      '</div>'+
+    '</div>';
+  go("card");
+}
+
+/* ================= ЭКРАН: ЗАЯВКА ================= */
+function renderRequest(reqId, origin){
+  requestOrigin = origin;
+  var hit = findReq(reqId); if(!hit){ renderList(); return; }
+  var d = ROWS[hit.deal], r = hit.req;
+  var backLabel = origin==="card" ? "К карточке сделки" : "К списку сделок";
+
+  content.innerHTML =
+    '<button class="backpill" data-nav="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>'+backLabel+'</button>'+
+    '<div class="screen-head">'+
+      '<h1>Заявка '+r.ref+'</h1>'+
+      '<span class="status s-confirmed"><span class="dot"></span>В работе</span>'+
+      '<span class="total mono" style="margin-left:auto">/requests/'+r.id+'</span>'+
+    '</div>'+
+    '<div class="bigpanel"><h2>Данные заявки</h2>'+
+      '<div class="kv-grid">'+
+        kv("Референс",'<span class="mono">'+r.ref+'</span>')+
+        kv("Статус","В работе")+
+        kv("Профессия","Электросварщик ручной сварки")+
+        kv("Количество","5 чел.")+
+        kv("Город","Москва")+
+        kv("Создана", d.created)+
+      '</div>'+
+      '<h2 style="margin-top:28px">Связанная сделка</h2>'+
+      '<div class="kv-grid">'+
+        kv("Наименование", esc(d.name))+
+        kv("Референс сделки",'<a href="#card" data-card="'+hit.deal+'" class="mono">'+d.ref+'</a>')+
+        kv("ИНН",'<span class="mono">'+d.inn+'</span>')+
+        kv("Статус сделки", d.st[1])+
+      '</div>'+
+    '</div>';
+  go("request");
+}
+
+/* ================= popover («сверх спека») ================= */
+var pop=null;
+function closePop(){ if(pop){ pop.remove(); pop=null; document.removeEventListener("keydown",onEsc); } }
+function onEsc(e){ if(e.key==="Escape") closePop(); }
+function openPop(btn, row){
+  closePop();
+  pop=document.createElement("div"); pop.className="pop"; pop.setAttribute("role","dialog");
+  pop.setAttribute("aria-label","Связанные заявки — "+row.name);
+  pop.innerHTML=
+    '<div class="pop-head"><div class="pop-title">Заявки · '+row.reqs.length+'</div>'+
+    '<input class="pop-search" type="text" placeholder="Поиск по номеру…" aria-label="Поиск заявки"></div>'+
+    '<div class="pop-body"></div>'+
+    '<div class="pop-foot"><a href="#card" data-card="'+ROWS.indexOf(row)+'">Открыть карточку сделки →</a></div>';
+  document.body.appendChild(pop);
+  var body=pop.querySelector(".pop-body");
+  function fill(q){
+    body.innerHTML="";
+    row.reqs.filter(function(r){ return r.ref.indexOf(q)!==-1; }).forEach(function(r){
+      var a=document.createElement("a"); a.href="#req"; a.className="mono"; a.textContent=r.ref; a.dataset.req=r.id; body.appendChild(a);
     });
+    if(!body.children.length) body.innerHTML='<a style="grid-column:1/-1;color:var(--muted2)">Ничего не найдено</a>';
   }
+  fill("");
+  pop.querySelector(".pop-search").addEventListener("input",function(){ fill(this.value.trim()); });
+  var rc=btn.getBoundingClientRect(), top=rc.bottom+8, left=rc.left, pr=pop.getBoundingClientRect();
+  if(left+pr.width>window.innerWidth-12) left=window.innerWidth-pr.width-12;
+  if(top+pr.height>window.innerHeight-12) top=rc.top-pr.height-8;
+  pop.style.top=Math.max(12,top)+"px"; pop.style.left=Math.max(12,left)+"px";
+  setTimeout(function(){ pop.querySelector(".pop-search").focus(); },0);
+  document.addEventListener("keydown",onEsc);
+}
 
-  /* ---- popover ---- */
-  var pop=null;
-  function closePop(){ if(pop){ pop.remove(); pop=null; document.removeEventListener("keydown",onEsc); } }
-  function onEsc(e){ if(e.key==="Escape") closePop(); }
-  function openPop(btn, row){
-    closePop();
-    pop=document.createElement("div");
-    pop.className="pop"; pop.setAttribute("role","dialog");
-    pop.setAttribute("aria-label","Связанные заявки — "+row.name);
-    pop.innerHTML=
-      '<div class="pop-head"><div class="pop-title">Заявки · '+row.reqs.length+'</div>'+
-      '<input class="pop-search" type="text" placeholder="Поиск по номеру…" aria-label="Поиск заявки"></div>'+
-      '<div class="pop-body"></div>'+
-      '<div class="pop-foot"><a href="#deal">Открыть сделку '+row.id+' →</a></div>';
-    document.body.appendChild(pop);
+/* ================= делегирование кликов ================= */
+document.addEventListener("click", function(e){
+  var reqLink = e.target.closest("[data-req]");
+  var popBtn  = e.target.closest("[data-pop]");
+  var cardLnk = e.target.closest("[data-card]");
+  var navBtn  = e.target.closest("[data-nav]");
+  var dealRow = e.target.closest(".deal-row");
 
-    var body=pop.querySelector(".pop-body");
-    function fill(q){
-      body.innerHTML="";
-      row.reqs.filter(function(r){ return r.indexOf(q)!==-1; }).forEach(function(r){
-        var a=document.createElement("a"); a.href="#"; a.className="mono"; a.textContent=r;
-        a.addEventListener("click",function(e){ e.preventDefault(); });
-        body.appendChild(a);
-      });
-      if(!body.children.length) body.innerHTML='<a style="grid-column:1/-1;color:var(--muted2)">Ничего не найдено</a>';
-    }
-    fill("");
-    var search=pop.querySelector(".pop-search");
-    search.addEventListener("input",function(){ fill(this.value.trim()); });
+  if(reqLink){ e.preventDefault(); e.stopPropagation();
+    renderRequest(reqLink.dataset.req, currentView==="card" ? "card" : "list"); return; }
+  if(popBtn){ e.preventDefault(); e.stopPropagation(); openPop(popBtn, ROWS[+popBtn.dataset.pop]); return; }
+  if(cardLnk){ e.preventDefault(); renderCard(+cardLnk.dataset.card); return; }
+  if(navBtn){ e.preventDefault();
+    if(navBtn.dataset.nav==="list") renderList();
+    else if(requestOrigin==="card") renderCard(cardDeal); else renderList();
+    return; }
+  if(dealRow){ renderCard(+dealRow.dataset.deal); return; }
+  if(pop && !e.target.closest(".pop")) closePop();
+});
+window.addEventListener("resize", closePop);
+window.addEventListener("scroll", closePop, true);
 
-    var r=btn.getBoundingClientRect();
-    var top=r.bottom+8, left=r.left;
-    var pr=pop.getBoundingClientRect();
-    if(left+pr.width>window.innerWidth-12) left=window.innerWidth-pr.width-12;
-    if(top+pr.height>window.innerHeight-12) top=r.top-pr.height-8;
-    pop.style.top=Math.max(12,top)+"px";
-    pop.style.left=Math.max(12,left)+"px";
-    setTimeout(function(){ search.focus(); },0);
-    document.addEventListener("keydown",onEsc);
-  }
-
-  document.addEventListener("click",function(e){
-    var more=e.target.closest(".more");
-    var toggle=e.target.closest(".linkmore");
-    if(more){ openPop(more, ROWS[+more.dataset.row]); return; }
-    if(toggle){ var i=+toggle.dataset.toggle; ROWS[i]._open=!ROWS[i]._open; render(); return; }
-    if(pop && !e.target.closest(".pop")) closePop();
+/* ================= переключатель вида колонки ================= */
+var HINTS = {
+  spec:'<b>По MR 428:</b> 2 референса + «… всего N». Референсы — ссылки на экран заявки; весь список — в карточке сделки (клик по строке).',
+  pop :'<b>Сверх спека:</b> то же «2 + всего N», но «всего N» открывает popover со списком и поиском — предложение к обсуждению в MR; строгий текст требований этого не содержит.'
+};
+var hint=document.getElementById("hint");
+document.querySelectorAll("#modeSeg button").forEach(function(b){
+  b.addEventListener("click",function(){
+    mode=b.dataset.mode; closePop();
+    document.querySelectorAll("#modeSeg button").forEach(function(x){ x.setAttribute("aria-pressed", x===b); });
+    hint.innerHTML=HINTS[mode];
+    if(currentView==="list") renderList();
   });
-  window.addEventListener("resize", closePop);
-  window.addEventListener("scroll", closePop, true);
+});
+hint.innerHTML=HINTS.spec;
 
-  /* ---- переключатель паттерна ---- */
-  var HINTS = {
-    chip:  '<b>Чип + popover:</b> 3 заявки + счётчик «+N». Клик открывает список со скроллом и поиском — высота строки не меняется никогда.',
-    inline:'<b>Инлайн-разворот:</b> «Показать все» разворачивает ячейку в строке. Проще, но строка прыгает по высоте — видно на сделке с 47 заявками.'
-  };
-  var hint=document.getElementById("hint");
-  document.querySelectorAll("#patternSeg button").forEach(function(b){
-    b.addEventListener("click",function(){
-      mode=b.dataset.pat; closePop();
-      document.querySelectorAll("#patternSeg button").forEach(function(x){ x.setAttribute("aria-pressed", x===b); });
-      if(mode==="chip") ROWS.forEach(function(r){ r._open=false; });
-      hint.innerHTML=HINTS[mode];
-      render();
-    });
-  });
-  hint.innerHTML=HINTS.chip;
+/* ================= меню прототипов ================= */
+(function(){
+  var pm=document.getElementById("protoMenu"); if(!pm) return;
+  var trig=pm.querySelector(".pm-trigger"), p=pm.querySelector(".pm-pop");
+  function cl(){ p.hidden=true; trig.setAttribute("aria-expanded","false"); }
+  function op(){ p.hidden=false; trig.setAttribute("aria-expanded","true"); }
+  trig.addEventListener("click",function(e){ e.stopPropagation(); p.hidden?op():cl(); });
+  document.addEventListener("click",function(e){ if(!pm.contains(e.target)) cl(); });
+  document.addEventListener("keydown",function(e){ if(e.key==="Escape") cl(); });
+})();
 
-  /* ---- меню прототипов ---- */
-  (function(){
-    var pm=document.getElementById("protoMenu"); if(!pm) return;
-    var trig=pm.querySelector(".pm-trigger"), p=pm.querySelector(".pm-pop");
-    function close(){ p.hidden=true; trig.setAttribute("aria-expanded","false"); }
-    function open(){ p.hidden=false; trig.setAttribute("aria-expanded","true"); }
-    trig.addEventListener("click",function(e){ e.stopPropagation(); p.hidden?open():close(); });
-    document.addEventListener("click",function(e){ if(!pm.contains(e.target)) close(); });
-    document.addEventListener("keydown",function(e){ if(e.key==="Escape") close(); });
-  })();
+/* ================= glass-шапка при скролле ================= */
+function syncTopnav(){ var h=document.querySelector(".topnav").offsetHeight; document.documentElement.style.setProperty("--topnav-h", h+"px"); }
+window.addEventListener("resize", syncTopnav); syncTopnav();
+window.addEventListener("scroll", function(){ document.body.classList.toggle("scrolled", window.scrollY>4); }, {passive:true});
 
-  /* ---- glass-эффект шапки при скролле ---- */
-  function syncTopnav(){ var h=document.querySelector(".topnav").offsetHeight; document.documentElement.style.setProperty("--topnav-h", h+"px"); }
-  window.addEventListener("resize", syncTopnav); syncTopnav();
-  window.addEventListener("scroll", function(){ document.body.classList.toggle("scrolled", window.scrollY>4); }, {passive:true});
-
-  render();
+renderList();
 </script>
 </body>
 </html>
