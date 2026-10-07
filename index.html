@@ -121,7 +121,7 @@
 
   /* ---------- сетка контента ---------- */
   .grid{display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:22px; margin-top:22px; align-items:start}
-  @media (max-width:920px){ .grid{grid-template-columns:1fr} }
+  @media (max-width:920px){ .grid{grid-template-columns:1fr} .side{position:static} }
 
   .main-panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden}
   .section{padding:22px clamp(16px,2.4vw,26px)}
@@ -219,7 +219,7 @@
   @media (prefers-reduced-motion:reduce){ .skel .ln{animation:none} }
 
   /* ---------- сайдбар ---------- */
-  .side{display:grid; gap:16px}
+  .side{display:grid; gap:16px; position:sticky; top:calc(var(--stack-h,200px) + 16px); align-self:start; z-index:20}
   .scard{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:18px}
   .scard h3{margin:0 0 14px; font-size:15px; font-weight:600}
   .prog-num{font-size:13px;color:var(--muted)}
@@ -667,8 +667,10 @@ document.getElementById("headerToggle").onchange=e=>{ headerShowOther=e.target.c
 
 /* высота залипающей панели-харнесса → под неё уходит шапка ЛК */
 function setHarnessH(){
-  const h = document.querySelector(".topnav").offsetHeight;
-  document.documentElement.style.setProperty("--topnav-h", h + "px");
+  const topnav = document.querySelector(".topnav").offsetHeight;
+  const lk = document.querySelector(".lk-header").offsetHeight;
+  document.documentElement.style.setProperty("--topnav-h", topnav + "px");
+  document.documentElement.style.setProperty("--stack-h", (topnav + lk) + "px");
 }
 window.addEventListener("resize", setHarnessH);
 
