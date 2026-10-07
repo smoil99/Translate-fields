@@ -1,0 +1,946 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Commissioner:wght@400;500;600&display=swap">
+<title>Группа заявок</title>
+<meta name="description" content="Прототип по BRD US-019 (migrants/docs#215): создание группы заявок, копирование заявки и группы, проверка и единая отправка, вкладка «Группы заявок» в ЛК клиента и администратора">
+<style>
+  /* Layout: ЛК клиента/админа — вкладка «Группы заявок» → экран группы (черновик / отправлена) → модалки DS; сверху харнесс прототипа */
+  :root{
+    color-scheme: dark;
+    --bg:#181C1F;
+    --panel:rgba(255,255,255,.045); --panel-2:rgba(255,255,255,.06); --panel-solid:#26292C;
+    --field:rgba(255,255,255,.10);
+    --line:rgba(255,255,255,.08); --line-strong:rgba(255,255,255,.14);
+    --text:#ffffff; --text-2:#e3e9eb; --muted:#8A9092; --muted2:#6E767A;
+    --label:rgba(255,255,255,.6); --dim:rgba(255,255,255,.35);
+    --primary:#07BBB2; --primary-dim:rgba(7,187,178,.14);
+    --accent:#61C7D6; --accent-dim:rgba(97,199,214,.10);
+    /* DS «Text» (статус, 1178:522) */
+    --st-pending:#F5CD06; --st-work:#61C7D6; --st-done:#00E887; --st-error:#FF6674; --st-none:#808C99;
+    /* DS «Alert» */
+    --warn:#F5CD06; --warn-bg:rgba(245,205,6,.10);
+    --err:#FF6674; --err-bg:rgba(255,102,116,.10);
+    --glass:rgba(24,28,31,.62);
+    --radius:16px; --r-field:12px; --r-pill:32px;
+    --f: "Commissioner", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:var(--f); color:var(--text);
+    background:
+      url("bg.webp") top center / cover no-repeat,
+      var(--bg);
+    background-attachment:fixed;
+    -webkit-font-smoothing:antialiased; font-size:14px; line-height:1.45;
+  }
+  a{color:var(--primary); text-decoration:none}
+  button{font-family:inherit}
+  [hidden]{display:none!important}
+  :focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+  /* ---------- харнесс прототипа ---------- */
+  .harness{background:rgba(20,23,26,.94); border-bottom:1px solid var(--line); padding:10px clamp(16px,4vw,40px)}
+  .harness-row{display:flex; flex-wrap:wrap; align-items:center; gap:12px 22px; max-width:1240px; margin:0 auto}
+  .harness .tag{font-size:10px; letter-spacing:.14em; font-weight:600; color:var(--primary);
+    border:1px solid rgba(7,187,178,.5); border-radius:5px; padding:3px 8px; text-transform:uppercase}
+  .ctl{display:flex; align-items:center; gap:9px; min-width:0; flex-wrap:wrap}
+  .ctl > span.lbl{font-size:11px; color:var(--muted); letter-spacing:.04em; white-space:nowrap}
+  .seg{display:inline-flex; flex-wrap:wrap; background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:9px; padding:3px}
+  .seg button{appearance:none; border:0; background:transparent; color:var(--muted);
+    font-size:12.5px; font-weight:500; padding:6px 11px; border-radius:6px; cursor:pointer; white-space:nowrap; transition:.12s}
+  .seg button:hover{color:#fff}
+  .seg button[aria-pressed="true"]{background:var(--primary); color:#04231f; font-weight:600}
+  .hint{font-size:11.5px; color:var(--muted2); flex:1 1 300px; min-width:0; margin:0}
+  .hint b{color:var(--muted); font-weight:500}
+
+  /* ---------- меню переключения прототипов (общее для страниц) ---------- */
+  .proto-menu{position:relative; flex:none}
+  .pm-trigger{appearance:none; display:inline-flex; align-items:center; gap:8px; cursor:pointer;
+    font-size:12.5px; font-weight:600; color:#fff;
+    background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:9px; padding:6px 11px}
+  .pm-trigger:hover{border-color:var(--line-strong)}
+  .pm-chev{width:13px;height:13px;color:var(--muted); transition:transform .15s}
+  .pm-trigger[aria-expanded="true"] .pm-chev{transform:rotate(180deg)}
+  .pm-pop{position:absolute; top:calc(100% + 8px); left:0; z-index:60; min-width:290px;
+    background:var(--panel-solid); border:1px solid var(--line-strong); border-radius:12px;
+    box-shadow:0 20px 50px -14px rgba(0,0,0,.7); padding:6px; display:flex; flex-direction:column; gap:2px}
+  .pm-pop a{display:flex; align-items:flex-start; gap:10px; padding:9px 10px; border-radius:8px; color:#fff; font-size:13px; font-weight:500}
+  .pm-pop a:hover{background:rgba(255,255,255,.06)}
+  .pm-pop a .pm-ic{width:16px;height:16px;color:var(--muted);flex:none;margin-top:1px}
+  .pm-pop a small{display:block;color:var(--muted);font-size:11px;font-weight:400;margin-top:2px;line-height:1.35}
+  .pm-pop a[aria-current="page"]{background:var(--primary-dim)}
+  .pm-pop a[aria-current="page"] .pm-ic{color:var(--primary)}
+
+  /* ---------- верхняя навигация ЛК: прозрачная, стекло при скролле ---------- */
+  .topnav{position:sticky; top:env(safe-area-inset-top,0px); z-index:35;
+    background:transparent; border-bottom:1px solid transparent; padding:0 clamp(16px,4vw,40px);
+    transition:background .22s ease, border-color .22s ease}
+  body.scrolled .topnav{background:var(--glass);
+    -webkit-backdrop-filter:blur(16px) saturate(1.4); backdrop-filter:blur(16px) saturate(1.4);
+    border-bottom-color:var(--line)}
+  .topnav-in{max-width:1240px; margin:0 auto; height:56px; display:flex; align-items:center; gap:24px}
+  .brand-links,.nav-links{display:flex; gap:22px; align-items:center; min-width:0}
+  .nav-links{gap:20px; overflow-x:auto; scrollbar-width:none}
+  .nav-links::-webkit-scrollbar{display:none}
+  .brand-links a,.nav-links a{display:flex; align-items:center; gap:7px; color:var(--muted); font-weight:500; font-size:13.5px; white-space:nowrap}
+  .brand-links a.active,.nav-links a.active{color:#fff}
+  .nav-links a.new{color:var(--primary)}
+  .brand-links .ic{width:15px;height:15px;opacity:.75}
+  .who{margin-left:auto; display:flex; align-items:center; gap:10px; white-space:nowrap}
+  .who .help{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:#cfd6d8;background:rgba(255,255,255,.08)}
+  .who .help svg{width:16px;height:16px}
+  .who .nm{font-size:13px;font-weight:600;line-height:1.1}
+  .who .rl{font-size:11px;color:var(--muted)}
+
+  /* ---------- контейнер ---------- */
+  .wrap{max-width:1320px; margin:0 auto; padding:18px clamp(16px,4vw,40px) 80px}
+
+  /* ---------- примитивы DS ---------- */
+  .btn{appearance:none; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    height:40px; padding:0 20px; border:0; border-radius:var(--r-pill); font-size:15px; font-weight:500; color:#fff;
+    background:rgba(255,255,255,.10); box-shadow:inset 0 1px 0 rgba(255,255,255,.10), inset 0 0 0 1px rgba(255,255,255,.06);
+    white-space:nowrap; transition:background .12s, filter .12s}
+  .btn:hover{background:rgba(255,255,255,.15)}
+  .btn svg{width:16px;height:16px;flex:none}
+  .btn.primary{background:var(--primary); box-shadow:inset 0 1px 0 rgba(255,255,255,.22)}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn.danger{background:rgba(255,102,116,.16); color:#ffb3ba; box-shadow:inset 0 0 0 1px rgba(255,102,116,.35)}
+  .btn.danger:hover{background:rgba(255,102,116,.24)}
+  .btn:disabled{background:rgba(255,255,255,.06); color:var(--dim); box-shadow:none; cursor:not-allowed; filter:none}
+  .btn.sm{height:32px; padding:0 14px; font-size:13.5px}
+  .btn.link{height:auto; padding:4px 2px; background:none; box-shadow:none; color:var(--accent); font-size:13.5px}
+  .btn.link:hover{background:none; text-decoration:underline}
+  .btn.link.del{color:#ff9aa3}
+
+  .status{display:inline-flex; align-items:center; gap:8px; padding:4px 12px; border-radius:var(--r-pill);
+    background:rgba(255,255,255,.10); box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+    font-size:14px; line-height:22px; font-weight:500; color:#fff; white-space:nowrap}
+  .status .dot{width:8px;height:8px;border-radius:50%;background:var(--st-none);flex:none}
+  .status.s-new .dot{background:var(--st-pending)}
+  .status.s-draft{color:var(--dim); font-weight:400}
+  .status.s-wait .dot{background:transparent; border:2px solid rgba(255,255,255,.25); border-top-color:var(--accent); animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .ref{display:inline-flex; align-items:center; gap:4px; background:rgba(255,255,255,.10); border-radius:6px;
+    padding:2px 8px; font-size:13px; font-weight:600; color:#fff; font-variant-numeric:tabular-nums; white-space:nowrap}
+  .ref .h{color:var(--dim); font-weight:600}
+  .ref.draft{color:var(--label); font-weight:500}
+  .ref.wait{color:var(--label); font-weight:500}
+  .ref.wait::before{content:""; width:9px; height:9px; border-radius:50%; border:2px solid rgba(255,255,255,.25); border-top-color:var(--accent); animation:spin .8s linear infinite}
+
+  .alert{display:flex; gap:10px; align-items:flex-start; border-radius:12px; padding:14px 16px; font-size:14px; font-weight:500; line-height:20px}
+  .alert > svg{width:18px;height:18px;flex:none;margin-top:1px}
+  .alert .body{flex:1; min-width:0}
+  .alert .body small{display:block; margin-top:3px; font-weight:400; color:rgba(255,255,255,.72); font-size:13px}
+  .alert.warn{background:var(--warn-bg); color:var(--warn)}
+  .alert.err{background:var(--err-bg); color:var(--err)}
+  .alert.info{background:var(--accent-dim); color:var(--accent)}
+  .alert ul{margin:8px 0 0; padding:0; list-style:none; display:grid; gap:6px}
+  .alert li{display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; color:#ffd2d6; font-weight:400; font-size:13.5px}
+  .alert li .btn.link{color:#fff; font-size:13px}
+
+  .f{display:flex; flex-direction:column; gap:8px; min-width:0}
+  .f label{font-size:13px; color:var(--label)}
+  .f label i{color:var(--err); font-style:normal}
+  .f input,.f select{height:46px; width:100%; border-radius:var(--r-field); background:var(--field);
+    border:1px solid transparent; color:#fff; font:inherit; font-size:15px; padding:0 14px; transition:border-color .12s}
+  .f select{appearance:none; padding-right:38px; cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-opacity='.6' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 14px center}
+  .f select option{background:#26292C; color:#fff}
+  .f input::placeholder{color:rgba(255,255,255,.38)}
+  .f input:hover,.f select:hover{border-color:rgba(255,255,255,.14)}
+  .f input:focus,.f select:focus{outline:none; border-color:var(--primary)}
+  .f .err-t{display:none; font-size:12px; color:var(--err)}
+  .f.bad label{color:var(--err)}
+  .f.bad input,.f.bad select{border-color:var(--err)}
+  .f.bad .err-t{display:block}
+
+  .chk{display:flex; gap:12px; align-items:flex-start; cursor:pointer; font-size:14.5px; color:var(--text-2)}
+  .chk input{appearance:none; width:18px; height:18px; flex:none; margin:1px 0 0; border-radius:4px;
+    border:1.5px solid rgba(255,255,255,.4); background:transparent; cursor:pointer; display:grid; place-items:center}
+  .chk input:checked{background:var(--primary); border-color:var(--primary)}
+  .chk input:checked::after{content:""; width:5px; height:9px; border:solid #fff; border-width:0 2px 2px 0; transform:translateY(-1px) rotate(45deg)}
+
+  .tabs{display:flex; gap:8px; flex-wrap:wrap}
+  .ftab{appearance:none; cursor:pointer; border:1px solid transparent; background:rgba(255,255,255,.10); color:#fff;
+    border-radius:var(--r-pill); padding:6px 14px; font-size:14.5px; line-height:22px}
+  .ftab:hover{background:rgba(255,255,255,.14)}
+  .ftab[aria-pressed="true"]{background:rgba(255,255,255,.14); border-color:rgba(255,255,255,.55)}
+  .ftab .n{color:var(--muted); margin-left:6px; font-variant-numeric:tabular-nums}
+
+  /* ---------- шапки экранов ---------- */
+  .backpill{appearance:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+    background:rgba(255,255,255,.06); border:1px solid var(--line); color:#dfe8e7; font-size:13.5px; font-weight:500;
+    padding:8px 16px 8px 12px; border-radius:999px}
+  .backpill:hover{background:rgba(255,255,255,.1)}
+  .backpill svg{width:16px;height:16px}
+  .crumbs{font-size:12.5px; color:var(--muted); margin:4px 0 12px}
+  h1{font-size:clamp(22px,3vw,30px); font-weight:600; letter-spacing:-.5px; margin:0; text-wrap:balance}
+  .head{display:flex; align-items:center; gap:12px 14px; flex-wrap:wrap; margin-top:16px}
+  .head .acts{margin-left:auto; display:flex; gap:10px; flex-wrap:wrap}
+  .lead{color:var(--muted); font-size:14px; margin:10px 0 0; max-width:78ch}
+  .meta{display:flex; flex-wrap:wrap; gap:6px 20px; margin-top:10px; color:var(--muted); font-size:13px}
+  .meta b{color:var(--text-2); font-weight:500}
+  .stack{display:grid; gap:12px; margin-top:18px}
+  .stack:empty{display:none}
+
+  /* ---------- список групп ---------- */
+  .toolbar{display:flex; flex-wrap:wrap; align-items:center; gap:12px 16px; margin-top:20px}
+  .search{position:relative; flex:1 1 320px; max-width:460px}
+  .search svg{position:absolute; left:14px; top:50%; width:18px; height:18px; transform:translateY(-50%); color:var(--label); pointer-events:none}
+  .search input{width:100%; height:44px; border-radius:var(--r-field); background:var(--field); border:1px solid transparent;
+    color:#fff; font:inherit; font-size:14.5px; padding:0 14px 0 42px}
+  .search input::placeholder{color:rgba(255,255,255,.4)}
+  .search input:focus{outline:none; border-color:var(--primary)}
+  .search-note{font-size:12.5px; color:var(--muted); margin-top:10px}
+  .search-note b{color:var(--text-2); font-weight:500}
+
+  .groups{display:grid; gap:12px; margin-top:18px}
+  .grp{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden}
+  .grp-head{display:grid; grid-template-columns:20px minmax(0,1.25fr) minmax(0,1.3fr) auto; align-items:center; gap:10px 18px;
+    padding:16px 20px; cursor:pointer}
+  .grp-head:hover{background:rgba(255,255,255,.025)}
+  .chev{width:18px;height:18px;color:var(--muted);transition:transform .15s;display:grid;place-items:center}
+  .chev svg{width:18px;height:18px}
+  .grp.open .grp-head .chev{transform:rotate(90deg)}
+  .grp-title{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+  .grp-title b{font-size:15.5px; font-weight:600}
+  .grp-sub{font-size:12.5px; color:var(--muted); margin-top:4px}
+  .grp-vol{font-size:13.5px; color:var(--text-2); min-width:0}
+  .grp-vol .regs{color:var(--muted); font-size:12.5px; margin-top:3px}
+  .miss{color:var(--warn); font-style:normal}
+  .tagc{font-size:11px; font-weight:600; letter-spacing:.04em; color:var(--accent); background:var(--accent-dim); border-radius:6px; padding:2px 7px}
+  .lock{display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:500; color:var(--warn); background:var(--warn-bg); border-radius:6px; padding:2px 8px; white-space:nowrap}
+  .lock svg{width:12px;height:12px}
+  .grp-kids{display:none; padding:2px 20px 16px 58px; gap:8px}
+  .grp.open .grp-kids{display:grid}
+  .kid{appearance:none; cursor:pointer; text-align:left; color:inherit; width:100%;
+    display:flex; align-items:center; gap:10px 12px; flex-wrap:wrap; padding:11px 14px; border-radius:12px;
+    background:var(--panel-2); border:1px solid var(--line)}
+  .kid:hover{border-color:var(--line-strong); background:rgba(255,255,255,.08)}
+  .kid.hit{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-dim)}
+  .kid .t{font-weight:600; font-size:14.5px}
+  .kid .m{color:var(--muted); font-size:13px; min-width:0}
+  .kid .r{margin-left:auto; display:flex; align-items:center; gap:10px}
+  .grp-kids .open-g{justify-self:start; margin-top:2px}
+  .empty{border:1px dashed var(--line-strong); border-radius:var(--radius); padding:44px 20px; text-align:center; color:var(--muted)}
+  .empty b{display:block; color:var(--text-2); font-size:15px; font-weight:600; margin-bottom:6px}
+
+  /* ---------- экран группы ---------- */
+  .counters{display:flex; flex-wrap:wrap; gap:10px; margin-top:18px}
+  .chip{display:flex; align-items:baseline; gap:8px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px 14px}
+  .chip b{font-size:18px; font-weight:600; font-variant-numeric:tabular-nums}
+  .chip span{font-size:13px; color:var(--muted)}
+  .chip.warn{border-color:rgba(245,205,6,.3); background:var(--warn-bg)}
+  .chip.warn span{color:var(--warn)}
+  .chip.ghost{background:transparent; border-style:dashed}
+  .regline{font-size:13px; color:var(--muted); margin-top:10px}
+  .regline b{color:var(--text-2); font-weight:500}
+
+  .sec{font-size:18px; font-weight:600; margin:28px 0 2px; letter-spacing:-.2px}
+  .sec-sub{color:var(--muted); font-size:13.5px; margin:0 0 14px}
+  .reqs{display:grid; gap:10px}
+  .req{background:var(--panel-2); border:1px solid var(--line-strong); border-radius:12px; overflow:hidden}
+  .req.bad{border-color:rgba(255,102,116,.55)}
+  .req.copy{border-color:rgba(245,205,6,.35)}
+  .req.priv{border-style:dashed}
+  .req.flash{animation:flash 1.2s ease-out}
+  @keyframes flash{0%{box-shadow:0 0 0 3px var(--accent)}100%{box-shadow:0 0 0 0 transparent}}
+  .req-head{display:flex; align-items:center; gap:8px 12px; flex-wrap:wrap; padding:13px 16px; cursor:pointer}
+  .req-head:hover{background:rgba(255,255,255,.03)}
+  .req.open .req-head .chev{transform:rotate(90deg)}
+  .req-title{font-size:15px; font-weight:600; white-space:nowrap}
+  .req-meta{font-size:13px; color:var(--muted); min-width:0}
+  .req-right{margin-left:auto; display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end}
+  .dmeta{font-size:12px; color:var(--muted); white-space:nowrap; font-variant-numeric:tabular-nums}
+  .dmeta .exp.soon{color:var(--warn)}
+  .dmeta .unsaved{color:var(--label)}
+  .req.bad .miss{color:var(--err)}
+  .req-body{display:none; padding:4px 16px 16px; border-top:1px solid var(--line)}
+  .req.open .req-body{display:block}
+  .req-body > .alert{margin-top:14px}
+  .form{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px 18px; margin-top:16px}
+  .kv-grid{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px 24px; margin-top:16px}
+  .kv .k{display:block; font-size:12.5px; color:var(--muted)}
+  .kv .v{font-size:14.5px; color:var(--text-2)}
+  .form-note{font-size:12px; color:var(--muted2); margin:14px 0 0}
+  .req-acts{display:flex; align-items:center; gap:10px 14px; flex-wrap:wrap; margin-top:16px; padding-top:14px; border-top:1px solid var(--line)}
+  .req-acts .note{font-size:12.5px; color:var(--muted); margin-right:auto; flex:1 1 220px}
+
+  .add{appearance:none; cursor:pointer; width:100%; margin-top:12px; display:flex; align-items:center; justify-content:center; gap:10px;
+    min-height:56px; padding:10px 16px; border-radius:12px; border:1.5px dashed rgba(97,199,214,.55); background:rgba(255,255,255,.025);
+    color:var(--accent); font-size:15px; font-weight:500}
+  .add:hover{background:var(--accent-dim)}
+  .add svg{width:18px;height:18px}
+  .add small{color:var(--muted); font-size:12.5px; font-weight:400}
+
+  .foot{display:flex; flex-wrap:wrap; align-items:center; gap:12px 14px; margin-top:24px; padding-top:20px; border-top:1px solid var(--line)}
+  .foot .note{flex:1 1 300px; font-size:13px; color:var(--muted)}
+  .foot .note.warn{color:var(--warn)}
+
+  /* ---------- модалка DS (glass) ---------- */
+  .mbg{position:fixed; inset:0; z-index:80; background:rgba(8,11,13,.55); display:grid; place-items:start center;
+    overflow:auto; padding:max(28px,6vh) 16px 28px; animation:fade .14s ease-out}
+  @keyframes fade{from{opacity:0}}
+  .modal{width:min(640px,100%); border-radius:20px; padding:32px clamp(20px,4vw,32px); display:flex; flex-direction:column; gap:22px;
+    background:rgba(46,50,54,.78); -webkit-backdrop-filter:blur(60px) saturate(1.3); backdrop-filter:blur(60px) saturate(1.3);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.12), inset 0 0 0 1px rgba(255,255,255,.06), 0 30px 80px -20px rgba(0,0,0,.75)}
+  .m-top{display:flex; align-items:flex-start; gap:12px}
+  .m-top h2{font-size:24px; line-height:32px; font-weight:600; margin:0; letter-spacing:-.3px; flex:1}
+  .m-x{appearance:none; border:0; background:rgba(255,255,255,.08); color:#cfd6d8; width:32px; height:32px; border-radius:50%; cursor:pointer; display:grid; place-items:center; flex:none}
+  .m-x:hover{background:rgba(255,255,255,.14)}
+  .m-x svg{width:16px;height:16px}
+  .m-lead{color:var(--label); font-size:14.5px; margin:-10px 0 0}
+  .m-acts{display:flex; justify-content:flex-end; gap:12px; flex-wrap:wrap; padding-top:4px}
+  .sum{display:flex; gap:12px; align-items:flex-start; background:var(--accent-dim); border-radius:12px; padding:14px 16px; font-size:14.5px; color:var(--text-2)}
+  .sum .sig{color:var(--accent); font-weight:600; font-size:17px; line-height:20px}
+  .sum b{color:#fff}
+  .prevs{display:grid; gap:10px}
+  .prev{background:rgba(255,255,255,.06); border-radius:12px; padding:14px 16px}
+  .prev-h{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+  .prev-h b{font-size:15px}
+  .prev .kv-grid{margin-top:12px; gap:10px 18px}
+  .prev .kv .v{font-size:13.5px}
+  .delta{display:grid; gap:6px; background:rgba(255,255,255,.06); border-radius:12px; padding:14px 16px; font-size:14px; color:var(--text-2)}
+  .delta .row{display:flex; justify-content:space-between; gap:12px}
+  .delta .row span{color:var(--muted)}
+  .delta .up{color:var(--st-done)}
+
+  /* ---------- toast ---------- */
+  #toast{position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom,0px)); z-index:90; transform:translate(-50%,16px);
+    background:var(--panel-solid); border:1px solid var(--line-strong); color:#fff; border-radius:12px; padding:11px 16px;
+    font-size:14px; box-shadow:0 16px 40px -12px rgba(0,0,0,.7); opacity:0; pointer-events:none; transition:.22s; max-width:calc(100vw - 32px)}
+  #toast.show{opacity:1; transform:translate(-50%,0)}
+
+  @media (max-width:860px){
+    .grp-head{grid-template-columns:20px minmax(0,1fr) auto}
+    .grp-vol{grid-column:2 / -1; grid-row:2}
+    .kv-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  }
+  @media (max-width:560px){
+    .form,.kv-grid,.prev .kv-grid{grid-template-columns:1fr}
+    .grp-kids{padding-left:20px}
+    .head .acts{margin-left:0}
+    .who .nm,.who .rl{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+</style>
+</head>
+<body>
+<!-- ============ ХАРНЕСС ПРОТОТИПА ============ -->
+<div class="harness">
+  <div class="harness-row">
+    <span class="tag">Прототип</span>
+
+    <!-- меню переключения фич -->
+    <div class="proto-menu" id="protoMenu">
+      <button class="pm-trigger" aria-haspopup="menu" aria-expanded="false">
+        <span class="pm-cur">Группа заявок</span>
+        <svg class="pm-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="pm-pop" role="menu" hidden>
+        <a role="menuitem" href="index.html">
+          <svg class="pm-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 8h14M5 12h14M5 16h9"/><path d="M15.5 4.5l4 4"/></svg>
+          <span>Перевод свободных полей<small>Роли, паттерны контрола, правка и подтверждение</small></span>
+        </a>
+        <a role="menuitem" href="related-requests.html">
+          <svg class="pm-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 4v16"/></svg>
+          <span>Связанные заявки<small>Колонка «2 + всего N» · карточка · экран заявки (T-03 §3)</small></span>
+        </a>
+        <a role="menuitem" href="request-groups.html" aria-current="page">
+          <svg class="pm-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><path d="M17 13.5v7M13.5 17h7"/></svg>
+          <span>Группа заявок<small>Создание, копирование заявки и группы, единая отправка (#215)</small></span>
+        </a>
+      </div>
+    </div>
+
+    <div class="ctl">
+      <span class="lbl">Роль / ЛК</span>
+      <div class="seg" id="roleSeg" role="group" aria-label="Роль">
+        <button data-role="client" aria-pressed="true">Клиент</button>
+        <button data-role="admin" aria-pressed="false">Админ РРУ</button>
+      </div>
+    </div>
+    <div class="ctl">
+      <span class="lbl">Сценарий</span>
+      <div class="seg" id="scenSeg" role="group" aria-label="Сценарий">
+        <button data-scen="list" aria-pressed="true">Вкладка</button>
+        <button data-scen="create" aria-pressed="false">Создание</button>
+        <button data-scen="errors" aria-pressed="false">Ошибки</button>
+        <button data-scen="confirm" aria-pressed="false">Подтверждение</button>
+        <button data-scen="sent" aria-pressed="false">Отправлена</button>
+        <button data-scen="copygroup" aria-pressed="false">Копия группы</button>
+        <button data-scen="refill" aria-pressed="false">Пополнение · админ</button>
+      </div>
+    </div>
+    <p class="hint" id="hint"></p>
+  </div>
+</div>
+
+<!-- ============ НАВИГАЦИЯ ЛК (зависит от роли) ============ -->
+<nav class="topnav"><div class="topnav-in" id="topnavIn"></div></nav>
+
+<main class="wrap" id="content"></main>
+<div id="modalRoot"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+/* ================= утилиты ================= */
+const $=(s,r=document)=>r.querySelector(s);
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
+const DAY=864e5, NOW=Date.now();
+const fmtD=t=>new Date(t).toLocaleDateString("ru-RU",{day:"2-digit",month:"2-digit",year:"numeric"});
+const fmtDM=t=>new Date(t).toLocaleDateString("ru-RU",{day:"2-digit",month:"2-digit"});
+const fmtT=t=>new Date(t).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
+const YMD=(d=>String(d.getUTCFullYear()).slice(2)+String(d.getUTCMonth()+1).padStart(2,"0")+String(d.getUTCDate()).padStart(2,"0"))(new Date());
+function plural(n,a,b,c){n=Math.abs(n)%100;const m=n%10;if(n>10&&n<20)return c;if(m>1&&m<5)return b;if(m===1)return a;return c;}
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),2600);}
+
+const IC={
+  chev:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>',
+  back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>',
+  arrow:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>',
+  copy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>',
+  trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
+  send:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12l16-8-6 16-2-6-8-2z"/></svg>',
+  search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
+  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>',
+  warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l10 18H2L12 3z"/><path d="M12 10v5M12 18v.5"/></svg>',
+  err:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/></svg>',
+  lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+  x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  help:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17v.5"/></svg>',
+  home:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>',
+  doc:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>'
+};
+
+/* ================= справочники демо ================= */
+const ORG_ME="ИП Гаврилова А. В.";
+const ORGS=[ORG_ME,"ООО «СтройМонтаж»","ООО «ТехноСервис»"];
+const PROFS=["Сварщик","Электромонтажник","Бетонщик","Арматурщик","Каменщик","Маляр","Монтажник"];
+const TERMS=["6 месяцев","1 год","2 года","Другой срок"];
+const SCHED=["5/2, 8 ч/день","6/1, 8 ч/день","Сменный график","Вахта 30/30","Другой"];
+const REQUIRED={prof:"Укажите профессию",region:"Укажите регион работы",count:"Укажите количество специалистов"};
+
+/* ================= модель ================= */
+let uid=0; const nid=()=>++uid;
+let S=null;
+function mkReq(o){return Object.assign({id:nid(),status:"DRAFT",n:null,local:null,prof:"",region:"",city:"",count:"",term:"1 год",salary:"",schedule:"5/2, 8 ч/день",start:"",created:NOW,changed:NOW,priv:false,copy:false,open:false,errs:[]},o);}
+function mkGroup(o){return Object.assign({id:nid(),org:ORG_ME,author:"client",status:"DRAFT",ref:null,reqs:[],copyOf:null,unsaved:false,open:false,created:NOW,sent:null,localSeq:0,nextN:1,showErr:false},o);}
+function addReq(g,o){const r=mkReq(o);if(r.local==null)r.local=++g.localSeq;g.reqs.push(r);return r;}
+const G=id=>S.groups.find(g=>g.id===id);
+const R=(g,id)=>g.reqs.find(r=>r.id===id);
+
+function seed(role){
+  uid=0;
+  const g1=mkGroup({status:"NEW",ref:"260923_4",created:NOW-15*DAY,sent:NOW-14*DAY,nextN:3});
+  addReq(g1,{status:"NEW",n:1,prof:"Сварщик",region:"Московская обл.",city:"г. Химки",count:10,salary:"120 000 ₽",start:"01.11.2026"});
+  addReq(g1,{status:"NEW",n:2,prof:"Электромонтажник",region:"Республика Татарстан",city:"г. Казань",count:14,salary:"110 000 ₽",schedule:"Вахта 30/30",start:"15.11.2026"});
+  const g2=mkGroup({status:"NEW",ref:"260921_2",created:NOW-17*DAY,sent:NOW-16*DAY,nextN:2});
+  addReq(g2,{status:"NEW",n:1,prof:"Маляр",region:"Москва",count:8,term:"6 месяцев",salary:"95 000 ₽",start:"20.11.2026"});
+  const g3=mkGroup({status:"DRAFT",created:NOW-28*DAY});
+  addReq(g3,{prof:"Каменщик",region:"Московская обл.",city:"г. Подольск",count:6,salary:"105 000 ₽",start:"10.12.2026",created:NOW-28*DAY,changed:NOW-3*DAY+5.2*36e5});
+  addReq(g3,{prof:"Арматурщик",created:NOW-28*DAY,changed:NOW-28*DAY});
+  const g4=mkGroup({status:"NEW",ref:"260923_4",org:"ООО «ТехноСервис»",created:NOW-15*DAY,sent:NOW-14*DAY,nextN:2});
+  addReq(g4,{status:"NEW",n:1,prof:"Монтажник",region:"Ленинградская обл.",count:12,salary:"115 000 ₽"});
+  S={role:role||"client",view:"list",gid:null,filter:"all",q:"",hl:null,groups:[g3,g1,g2,g4],seq:5,ids:{g1:g1.id,g3:g3.id}};
+}
+
+/* видимость: черновик — только автору; клиент видит только свою организацию; приватный черновик админа — только админу */
+function canSee(g){
+  if(g.unsaved) return false;
+  if(S.role==="client" && g.org!==ORG_ME) return false;
+  if(g.status==="DRAFT" && g.author!==S.role) return false;
+  return true;
+}
+const visReqs=g=>g.reqs.filter(r=>!(r.priv && S.role!=="admin"));
+const pubReqs=g=>g.status==="NEW"?g.reqs.filter(r=>r.status==="NEW"):visReqs(g);
+const privDrafts=g=>g.reqs.filter(r=>r.priv&&r.status==="DRAFT");
+function summ(rs){let n=0,missC=0,missR=0;const regs=[];rs.forEach(r=>{if(+r.count>0)n+=+r.count;else missC++;if(r.region){if(!regs.includes(r.region))regs.push(r.region);}else missR++;});return{count:rs.length,n,regs,missC,missR};}
+function missing(r){return Object.keys(REQUIRED).filter(k=>k==="count"?!(+r.count>0):!String(r[k]||"").trim());}
+const expiry=r=>r.changed+30*DAY;
+function reqRef(g,r){return r.n? (g.ref&&g.ref!=="…"? g.ref+"_"+r.n : null) : null;}
+
+/* ================= атомы разметки ================= */
+function statusPill(st,wait){
+  if(wait) return '<span class="status s-wait"><span class="dot"></span>Отправлена · номер присваивается</span>';
+  return st==="NEW"?'<span class="status s-new"><span class="dot"></span>Новая</span>':'<span class="status s-draft"><span class="dot"></span>Черновик</span>';
+}
+function groupRef(g){
+  if(g.status==="DRAFT") return '<span class="ref draft">Без номера</span>';
+  if(g.ref==="…") return '<span class="ref wait">Номер присваивается</span>';
+  return '<span class="ref"><span class="h">№</span>'+esc(g.ref)+'</span>';
+}
+function childRef(g,r){
+  if(r.status==="NEW"){ const ref=reqRef(g,r); return ref?'<span class="ref"><span class="h">№</span>'+esc(ref)+'</span>':'<span class="ref wait">_'+r.n+'</span>'; }
+  return '<span class="ref draft">Черновик · '+r.local+'</span>';
+}
+function reqMeta(r){
+  const reg=r.region?esc(r.region)+(r.city?", "+esc(r.city):""):'<i class="miss">регион не указан</i>';
+  const cnt=+r.count>0?esc(r.count)+" чел.":'<i class="miss">кол-во не указано</i>';
+  return "· "+reg+" · "+cnt;
+}
+function draftMeta(g,r){
+  if(r.status!=="DRAFT") return "";
+  if(g.unsaved) return '<span class="dmeta"><span class="unsaved">Не сохранено</span></span>';
+  const left=Math.ceil((expiry(r)-NOW)/DAY);
+  const saved=(NOW-r.changed<DAY)?"Сохранено в "+fmtT(r.changed):"Изменено "+fmtD(r.changed);
+  const exp=left<=3?'<span class="exp soon">удалится через '+left+" "+plural(left,"день","дня","дней")+" ("+fmtDM(expiry(r))+")</span>":'<span class="exp">удалится '+fmtD(expiry(r))+"</span>";
+  return '<span class="dmeta">'+saved+" · "+exp+"</span>";
+}
+
+/* ================= навигация ЛК ================= */
+function renderNav(){
+  const admin=S.role==="admin";
+  $("#topnavIn").innerHTML = admin
+    ? '<div class="nav-links"><a href="#">Организации</a><a href="#">Ожидают подтверждения</a><a href="#">Дашборд</a><a href="#">Сделки</a><a href="#" class="active" data-go="list">Группы заявок</a><a href="#">Отчёты</a><a href="#">Аудит</a><a href="#">Справочники</a></div>'+
+      '<div class="who"><div><div class="nm">Platform</div><div class="rl">Администратор РРУ</div></div></div>'
+    : '<div class="brand-links"><a href="#">'+IC.home+'<span>Главная</span></a><a href="#" class="active" data-go="list">'+IC.doc+'<span>Заявки</span></a></div>'+
+      '<div class="who"><span class="help">'+IC.help+'</span><div><div class="nm">ИП Гаврилова</div><div class="rl">Клиент в РФ</div></div></div>';
+}
+
+/* ================= экран: вкладка «Группы заявок» ================= */
+function renderList(){
+  const admin=S.role==="admin";
+  const vis=S.groups.filter(canSee);
+  const cnt={all:vis.length,DRAFT:vis.filter(g=>g.status==="DRAFT").length,NEW:vis.filter(g=>g.status==="NEW").length};
+  let rows=vis.filter(g=>S.filter==="all"||g.status===S.filter);
+  let note="";
+  S.hl=null;
+  const q=S.q.trim();
+  if(q){
+    const hits=[];
+    rows.forEach(g=>{
+      if(g.ref&&g.ref===q){hits.push(g);return;}
+      const r=pubReqs(g).find(x=>reqRef(g,x)===q);
+      if(r){hits.push(g);g.open=true;S.hl=r.id;}
+    });
+    rows=hits;
+    note = hits.length
+      ? '<p class="search-note">Найдено по референсу <b>'+esc(q)+'</b>: '+hits.length+" "+plural(hits.length,"группа","группы","групп")+(S.hl?" — раскрыта на найденной заявке":"")+(admin&&hits.length>1?". Одинаковые номера разных клиентов различаются по организации.":"")+"</p>"
+      : "";
+  }
+  const C=$("#content");
+  C.innerHTML=
+    '<p class="crumbs">'+(admin?"Администрирование":"Личный кабинет")+" / Заявки</p>"+
+    '<div class="head"><h1>Группы заявок</h1><div class="acts"><button class="btn primary" data-act="create">'+IC.plus+"Создать заявку</button></div></div>"+
+    '<p class="lead">Одна строка — одно обращение. В обращении может быть одна или несколько заявок на специалистов; раскройте строку, чтобы увидеть состав. Статусный фильтр применяется к статусу группы.</p>'+
+    '<div class="toolbar">'+
+      '<label class="search">'+IC.search+'<input id="q" type="search" inputmode="search" autocomplete="off" placeholder="Точный поиск по номеру: 260923_4 или 260923_4_2" value="'+esc(S.q)+'" aria-label="Поиск по номеру группы или заявки"></label>'+
+      '<div class="tabs" role="group" aria-label="Статус группы">'+
+        [["all","Все"],["DRAFT","Черновики"],["NEW","Новые"]].map(([k,l])=>'<button class="ftab" data-filter="'+k+'" aria-pressed="'+(S.filter===k)+'">'+l+'<span class="n">'+cnt[k]+"</span></button>").join("")+
+      "</div>"+
+    "</div>"+note+
+    '<div class="groups">'+(rows.length?rows.map(groupRow).join(""):emptyState(q))+"</div>";
+}
+function emptyState(q){
+  return '<div class="empty"><b>'+(q?"Группа с таким номером не найдена":"В этом статусе групп нет")+"</b>"+(q?"Поиск — по полному номеру группы или заявки, например 260923_4 или 260923_4_2.":"Измените фильтр или создайте заявку.")+"</div>";
+}
+function groupRow(g){
+  const admin=S.role==="admin";
+  const s=summ(pubReqs(g));
+  const lastChange=Math.max.apply(null,g.reqs.map(r=>r.changed));
+  const sub=(admin?esc(g.org)+" · ":"")+(g.status==="DRAFT"?"изменена "+fmtD(lastChange):"отправлена "+fmtD(g.sent||NOW));
+  const vol=s.count+" "+plural(s.count,"заявка","заявки","заявок")+" · "+(s.n?s.n+" "+plural(s.n,"специалист","специалиста","специалистов")+(s.missC?' <i class="miss">+ кол-во не указано в '+s.missC+"</i>":""):'<i class="miss">кол-во не указано</i>');
+  const regs=s.regs.length?esc(s.regs.join(", ")):"";
+  const regsMiss=s.missR?(regs?", ":"")+'<i class="miss">регион не указан в '+s.missR+"</i>":"";
+  const kids=visReqs(g).filter(r=>g.status==="DRAFT"||r.status==="NEW"||(admin&&r.priv));
+  return '<div class="grp'+(g.open?" open":"")+'">'+
+    '<div class="grp-head" role="button" tabindex="0" aria-expanded="'+g.open+'" data-toggle="'+g.id+'">'+
+      '<span class="chev">'+IC.chev+"</span>"+
+      '<div><div class="grp-title">'+groupRef(g)+"<b>Группа заявок</b>"+(g.copyOf?'<span class="tagc">копия</span>':"")+'</div><div class="grp-sub">'+sub+"</div></div>"+
+      '<div class="grp-vol"><div>'+vol+'</div><div class="regs">'+(regs||regsMiss?regs+regsMiss:"—")+"</div></div>"+
+      "<div>"+statusPill(g.status,g.ref==="…")+"</div>"+
+    "</div>"+
+    '<div class="grp-kids">'+kids.map(r=>
+      '<button class="kid'+(S.hl===r.id?" hit":"")+'" data-open="'+g.id+'" data-req="'+r.id+'">'+childRef(g,r)+
+      '<span class="t">'+esc(r.prof||"Заявка без профессии")+'</span><span class="m">'+reqMeta(r)+"</span>"+
+      '<span class="r">'+(r.priv?'<span class="lock">'+IC.lock+"только вам</span>":"")+(r.status==="DRAFT"?draftMeta(g,r):"")+statusPill(r.status)+"</span></button>"
+    ).join("")+
+      '<button class="btn link open-g" data-open="'+g.id+'">Открыть группу '+IC.arrow+"</button>"+
+    "</div></div>";
+}
+
+/* ================= экран: группа ================= */
+function editableReq(g,r){
+  if(r.status!=="DRAFT") return false;
+  if(g.status==="DRAFT") return g.author===S.role;
+  return S.role==="admin"&&r.priv;
+}
+function renderGroup(){
+  const g=G(S.gid); if(!g||(!canSee(g)&&!g.unsaved)){S.view="list";return render();}
+  const admin=S.role==="admin";
+  const C=$("#content");
+  C.innerHTML=
+    '<button class="backpill" data-go="list">'+IC.back+"Группы заявок</button>"+
+    '<div class="head"><h1>Группа заявок</h1><span id="gRef">'+groupRef(g)+'</span><span id="gStatus">'+statusPill(g.status,g.ref==="…")+'</span>'+
+      '<div class="acts">'+(g.unsaved?"":'<button class="btn sm" data-act="copyGroup">'+IC.copy+"Скопировать группу</button>")+"</div></div>"+
+    '<div class="meta" id="gMeta"></div>'+
+    '<div class="stack" id="gNotices"></div>'+
+    '<div class="counters" id="gCounters"></div><div class="regline" id="gRegs"></div>'+
+    '<h2 class="sec">Заявки в группе</h2>'+
+    '<p class="sec-sub">Каждая заявка независима и заполняется обычной формой заявки. Общих полей и «Применить к…» нет.</p>'+
+    '<div class="reqs" id="gReqs">'+visReqs(g).map(r=>reqCard(g,r)).join("")+"</div>"+
+    addButton(g)+
+    '<div class="foot" id="gFoot"></div>';
+  soft(g);
+}
+function addButton(g){
+  if(g.status==="DRAFT"&&g.author===S.role&&!g.unsaved) return '<button class="add" data-act="addBlank">'+IC.plus+"Запрос на специалистов</button>";
+  if(g.status==="NEW"&&S.role==="admin"&&g.ref!=="…") return '<button class="add" data-act="addBlank">'+IC.plus+"Запрос на специалистов <small>· черновик будет виден только вам</small></button>";
+  return "";
+}
+/* частичное обновление без перерисовки форм (не теряем фокус при вводе) */
+function soft(g){
+  const admin=S.role==="admin";
+  $("#gRef").innerHTML=groupRef(g);
+  $("#gStatus").innerHTML=statusPill(g.status,g.ref==="…");
+  const m=[];
+  if(admin) m.push("Организация: <b>"+esc(g.org)+"</b> · зафиксирована при первом сохранении");
+  if(g.status==="NEW"&&g.sent) m.push("Отправлена <b>"+fmtD(g.sent)+"</b>");
+  if(g.copyOf) m.push("Копия группы <b>"+esc(g.copyOf)+"</b>");
+  $("#gMeta").innerHTML=m.map(x=>"<span>"+x+"</span>").join("");
+  $("#gNotices").innerHTML=notices(g);
+  $("#gCounters").innerHTML=counters(g);
+  const s=summ(pubReqs(g));
+  $("#gRegs").innerHTML=s.regs.length?"Регионы: <b>"+esc(s.regs.join(", "))+"</b>":"";
+  visReqs(g).forEach(r=>{const h=document.querySelector('[data-head="'+r.id+'"]');if(h)h.innerHTML=reqHeadInner(g,r);});
+  $("#gFoot").innerHTML=footer(g);
+}
+function notices(g){
+  const admin=S.role==="admin"; const out=[];
+  if(g.unsaved) out.push(alertBox("info",IC.info,"В одном обращении можно указать несколько запросов на специалистов.","Начните заполнять первую заявку — черновик и группа сохранятся автоматически после первого ввода. Пустая форма группу не создаёт."));
+  if(g.copyOf&&g.status==="DRAFT") out.push(alertBox("info",IC.copy,"Независимая копия группы. Проверьте все заявки перед отправкой. Вложения и результаты работы не скопированы.","Оригинал и копия не синхронизируются. Номера присвоятся при отправке новой группы."));
+  if(g.showErr){
+    const bad=visReqs(g).filter(r=>r.errs.length);
+    if(bad.length) out.push('<div class="alert err">'+IC.err+'<div class="body">Отправка невозможна: '+bad.length+" "+plural(bad.length,"заявка заполнена","заявки заполнены","заявок заполнены")+" не полностью. Статусы группы и заявок не изменились."+
+      "<ul>"+bad.map(r=>"<li><span>"+(r.n?"№ "+esc(reqRef(g,r)):"Черновик · "+r.local)+" · "+esc(r.prof||"без профессии")+(r.region?", "+esc(r.region):"")+" — не заполнено: "+r.errs.map(k=>({prof:"профессия",region:"регион",count:"количество"})[k]).join(", ")+'</span><button class="btn link" data-goto="'+r.id+'">Перейти к полям</button></li>').join("")+"</ul></div></div>");
+  }
+  if(g.status==="NEW"&&g.ref==="…") out.push(alertBox("info",IC.info,"Группа отправлена. Номер присваивается.","Отправка выполнена успешно — повторять её не нужно. Номер появится автоматически."));
+  if(g.status==="NEW"&&admin&&privDrafts(g).length) out.push(alertBox("warn",IC.lock,"Черновик администратора виден только вам и не входит в опубликованную сводку.","Отправьте его отдельно — тогда клиент увидит заявку и обновлённый состав. Группа и другие заявки повторно не отправляются."));
+  return out.join("");
+}
+function alertBox(type,icon,title,sub){return '<div class="alert '+type+'">'+icon+'<div class="body">'+title+(sub?"<small>"+sub+"</small>":"")+"</div></div>";}
+function counters(g){
+  const admin=S.role==="admin";
+  const s=summ(pubReqs(g));
+  const specs=new Set(pubReqs(g).map(r=>r.prof).filter(Boolean)).size;
+  let h=
+    '<div class="chip"><b>'+s.count+"</b><span>"+plural(s.count,"заявка","заявки","заявок")+"</span></div>"+
+    '<div class="chip"><b>'+(s.n||!s.missC?s.n:"—")+"</b><span>"+plural(s.n,"специалист","специалиста","специалистов")+"</span></div>"+
+    '<div class="chip"><b>'+(s.regs.length||!s.missR?s.regs.length:"—")+"</b><span>"+plural(s.regs.length,"регион","региона","регионов")+"</span></div>"+
+    '<div class="chip"><b>'+(specs||!pubReqs(g).some(r=>!r.prof)?specs:"—")+"</b><span>"+plural(specs,"профессия","профессии","профессий")+"</span></div>";
+  if(g.status==="DRAFT"&&(s.missC||s.missR)){
+    const p=[]; if(s.missC)p.push("количество — в "+s.missC); if(s.missR)p.push("регион — в "+s.missR);
+    h+='<div class="chip warn"><span>Не заполнено: '+p.join(", ")+"</span></div>";
+  }
+  if(g.status==="NEW"&&admin){
+    const pd=privDrafts(g); if(pd.length){const d=summ(pd);
+      h+='<div class="chip ghost"><span>Черновик админа: +'+d.count+" "+plural(d.count,"заявка","заявки","заявок")+(d.n?" · +"+d.n+" спец.":"")+" · не опубликовано</span></div>";}
+  }
+  return h;
+}
+function footer(g){
+  const admin=S.role==="admin";
+  if(g.status==="DRAFT"&&g.author===S.role){
+    const k=visReqs(g).length;
+    return '<p class="note">'+(k===1?"Отправка проверит заявку и переведёт группу":"Отправка проверит все "+k+" "+plural(k,"заявку","заявки","заявок")+" и переведёт группу целиком")+" в статус «Новая». Частичная отправка недоступна.</p>"+
+      '<button class="btn" data-act="saveExit">Сохранить и выйти</button>'+
+      '<button class="btn primary" data-act="send"'+(g.unsaved?" disabled":"")+">"+IC.send+"Отправить группу</button>";
+  }
+  if(g.status==="NEW"&&!admin) return '<p class="note">Группа отправлена РРУ. Состав менять нельзя — чтобы добавить или убрать заявку, обратитесь к менеджеру РРУ. Для нового похожего обращения используйте «Скопировать группу».</p>';
+  if(g.status==="NEW"&&admin){
+    return privDrafts(g).length
+      ? '<p class="note warn">Передача группы в работу недоступна, пока в ней есть неотправленный черновик — отправьте или удалите его.</p>'
+      : '<p class="note">Пополнение доступно, пока группа «Новая» и ни одна заявка не передана в работу. Дальнейшая работа с группой — в смежном BRD «Работа с группой заявок».</p>';
+  }
+  return "";
+}
+
+/* ---------- карточка вложенной заявки ---------- */
+function reqHeadInner(g,r){
+  return '<span class="chev">'+IC.chev+"</span>"+childRef(g,r)+
+    '<span class="req-title">'+esc(r.prof||"Новая заявка")+'</span><span class="req-meta">'+reqMeta(r)+"</span>"+
+    '<span class="req-right">'+(r.priv?'<span class="lock">'+IC.lock+"только вам</span>":"")+draftMeta(g,r)+statusPill(r.status)+"</span>";
+}
+function reqCard(g,r){
+  const ed=editableReq(g,r);
+  const cls="req"+(r.open?" open":"")+(r.errs.length?" bad":"")+(r.copy&&r.status==="DRAFT"?" copy":"")+(r.priv?" priv":"");
+  return '<div class="'+cls+'" data-rid="'+r.id+'">'+
+    '<div class="req-head" role="button" tabindex="0" aria-expanded="'+r.open+'" data-head="'+r.id+'" data-rtoggle="'+r.id+'">'+reqHeadInner(g,r)+"</div>"+
+    '<div class="req-body">'+(r.open?reqBody(g,r,ed):"")+"</div></div>";
+}
+function fld(r,k,label,type,opts){
+  const req=REQUIRED[k];
+  const bad=r.errs.includes(k);
+  let ctrl;
+  if(type==="select"){
+    ctrl='<select id="f-'+r.id+"-"+k+'" data-k="'+k+'" data-r="'+r.id+'">'+(opts.empty?'<option value="">Выберите</option>':"")+
+      opts.list.map(o=>'<option'+(String(r[k])===o?" selected":"")+">"+esc(o)+"</option>").join("")+"</select>";
+  } else {
+    ctrl='<input id="f-'+r.id+"-"+k+'" data-k="'+k+'" data-r="'+r.id+'" type="'+(type||"text")+'"'+(type==="number"?' min="1" inputmode="numeric"':"")+' value="'+esc(r[k])+'" placeholder="'+esc(opts&&opts.ph||"")+'">';
+  }
+  return '<div class="f'+(bad?" bad":"")+'" data-f="'+k+'"><label for="f-'+r.id+"-"+k+'">'+label+(req?" <i>*</i>":"")+"</label>"+ctrl+(req?'<span class="err-t">'+req+"</span>":"")+"</div>";
+}
+function kv(k,v){return '<div class="kv"><span class="k">'+k+'</span><span class="v">'+(v?esc(v):"—")+"</span></div>";}
+function reqBody(g,r,ed){
+  const admin=S.role==="admin";
+  let h="";
+  if(r.copy&&r.status==="DRAFT") h+=alertBox("warn",IC.warn,"Независимая копия. Проверьте все условия перед отправкой. Вложения не скопированы.","");
+  if(ed){
+    h+='<div class="form">'+
+      fld(r,"prof","Профессия","select",{list:PROFS,empty:true})+
+      fld(r,"count","Количество специалистов","number",{ph:"Например, 10"})+
+      fld(r,"region","Регион работы","text",{ph:"Например, Московская обл."})+
+      fld(r,"city","Город, адрес","text",{ph:"Город, улица"})+
+      fld(r,"term","Срок привлечения","select",{list:TERMS})+
+      fld(r,"start","Планируемая дата выхода","text",{ph:"дд.мм.гггг"})+
+      fld(r,"salary","Заработная плата","text",{ph:"Например, 120 000 ₽"})+
+      fld(r,"schedule","График работы","select",{list:SCHED})+
+    '</div><p class="form-note">Состав полей и обязательность — по требованиям новой формы заявки; в прототипе показаны ключевые поля.</p>';
+  } else {
+    h+='<div class="kv-grid">'+kv("Профессия",r.prof)+kv("Количество специалистов",r.count?r.count+" чел.":"")+kv("Регион работы",r.region)+kv("Город, адрес",r.city)+kv("Срок привлечения",r.term)+kv("Планируемая дата выхода",r.start)+kv("Заработная плата",r.salary)+kv("График работы",r.schedule)+"</div>";
+  }
+  const canCopy=!g.unsaved&&((g.status==="DRAFT"&&g.author===S.role)||(g.status==="NEW"&&admin&&g.ref!=="…"));
+  h+='<div class="req-acts">';
+  if(ed) h+='<span class="note">'+(g.unsaved?"Черновик появится после первого ввода — тогда станут доступны копирование и удаление.":g.status==="NEW"?"Черновик администратора: клиент увидит заявку только после её отдельной отправки.":"Сохраняется автоматически. Копия создаётся из сохранённого состояния этой заявки, без вложений.")+"</span>";
+  else h+='<span class="note">'+(admin?"Отправленная заявка. Правка опубликованных данных — по смежному BRD.":"Отправленную заявку клиент не меняет — правки вносит менеджер РРУ.")+"</span>";
+  if(canCopy) h+='<button class="btn sm" data-act="copyReq" data-r="'+r.id+'">'+IC.copy+"Скопировать заявку</button>";
+  if(ed&&!g.unsaved) h+='<button class="btn link del" data-act="delReq" data-r="'+r.id+'">'+IC.trash+"Удалить черновик</button>";
+  if(ed&&g.status==="NEW") h+='<button class="btn sm primary" data-act="sendChild" data-r="'+r.id+'">'+IC.send+"Отправить заявку</button>";
+  h+="</div>";
+  return h;
+}
+
+/* ================= модалки (DS glass) ================= */
+function openModal({title,lead,body,acts,onMount}){
+  const root=$("#modalRoot");
+  root.innerHTML='<div class="mbg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">'+
+    '<div class="m-top"><h2 id="mTitle">'+title+'</h2><button class="m-x" data-close aria-label="Закрыть">'+IC.x+"</button></div>"+
+    (lead?'<p class="m-lead">'+lead+"</p>":"")+(body||"")+
+    '<div class="m-acts">'+acts.map((a,i)=>'<button class="btn '+(a.cls||"")+'" data-mi="'+i+'"'+(a.disabled?" disabled":"")+(a.id?' id="'+a.id+'"':"")+">"+a.label+"</button>").join("")+"</div></div></div>";
+  const bg=root.querySelector(".mbg");
+  bg.addEventListener("click",e=>{
+    if(e.target===bg||e.target.closest("[data-close]")){closeModal();return;}
+    const b=e.target.closest("[data-mi]"); if(b&&!b.disabled){const a=acts[+b.dataset.mi]; a.onClick?a.onClick():closeModal();}
+  });
+  if(onMount) onMount(root);
+  const f=root.querySelector(".m-acts .btn:not(:disabled)"); if(f) f.focus();
+}
+function closeModal(){$("#modalRoot").innerHTML="";}
+function prevCard(g,r,label){
+  return '<div class="prev"><div class="prev-h">'+label+"<b>"+esc(r.prof)+"</b></div>"+
+    '<div class="kv-grid">'+kv("Регион",r.region+(r.city?", "+r.city:""))+kv("Специалистов",String(r.count))+kv("Срок",r.term)+kv("Зарплата",r.salary)+kv("График",r.schedule)+kv("Выход",r.start)+"</div></div>";
+}
+
+/* ================= действия ================= */
+function render(){ renderNav(); S.view==="group"?renderGroup():renderList(); }
+function openGroup(id,reqId){
+  S.view="group"; S.gid=id;
+  const g=G(id);
+  if(reqId){ g.reqs.forEach(r=>{if(r.id===reqId)r.open=true;}); }
+  render(); window.scrollTo(0,0);
+  if(reqId) flash(reqId);
+}
+function flash(rid){ const el=document.querySelector('[data-rid="'+rid+'"]'); if(!el)return; el.scrollIntoView({block:"center",behavior:"smooth"}); el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); }
+
+function createGroup(org){
+  if(S.role==="admin"&&!org){
+    openModal({title:"Новое обращение за клиента",lead:"Сначала выберите организацию клиента. Она фиксируется при первом сохранении и не меняется ни у группы, ни у её заявок.",
+      body:'<div class="f"><label for="orgSel">Организация клиента <i>*</i></label><select id="orgSel">'+ORGS.map(o=>"<option>"+esc(o)+"</option>").join("")+"</select></div>",
+      acts:[{label:"Отмена"},{label:"Продолжить",cls:"primary",onClick:()=>{const o=$("#orgSel").value;closeModal();createGroup(o);}}]});
+    return;
+  }
+  const g=mkGroup({org:org||ORG_ME,author:S.role,unsaved:true});
+  addReq(g,{open:true});
+  S.groups.unshift(g);
+  openGroup(g.id);
+  const f=document.querySelector("#gReqs select, #gReqs input"); if(f) f.focus({preventScroll:true});
+}
+function addBlank(g){
+  g.reqs.forEach(r=>r.open=false);
+  const r=addReq(g,{open:true,priv:g.status==="NEW"});
+  if(g.status==="NEW"){ r.changed=NOW; }
+  render(); flash(r.id);
+  toast(g.status==="NEW"?"Добавлен черновик — виден только вам":"Добавлена пустая заявка");
+}
+function copyReq(g,src){
+  const r=addReq(g,{open:true,copy:true,priv:g.status==="NEW",
+    prof:src.prof,region:src.region,city:src.city,count:src.count,term:src.term,salary:src.salary,schedule:src.schedule,start:src.start,
+    created:Date.now(),changed:Date.now()});
+  src.open=false;
+  render(); flash(r.id);
+  toast("Создана независимая копия заявки");
+}
+function delReq(g,r){
+  const last=g.status==="DRAFT"&&visReqs(g).length===1;
+  openModal({title:"Удалить черновик?",
+    lead:"«"+esc(r.prof||"Новая заявка")+"» (Черновик · "+r.local+") будет удалён."+(last?" Это последняя заявка — пустая группа тоже будет удалена.":" Остальные заявки сохранятся со своими сроками."),
+    acts:[{label:"Отмена"},{label:"Удалить",cls:"danger",onClick:()=>{
+      closeModal();
+      g.reqs=g.reqs.filter(x=>x.id!==r.id);
+      if(g.status==="DRAFT"&&g.reqs.length===0){ S.groups=S.groups.filter(x=>x!==g); S.view="list"; render(); toast("Удалён последний черновик — пустая группа удалена"); return; }
+      g.showErr=g.showErr&&visReqs(g).some(x=>x.errs.length);
+      render(); toast("Черновик удалён");
+    }}]});
+}
+function copyGroup(src){
+  const g=mkGroup({org:src.org,author:S.role,copyOf:src.status==="DRAFT"?"(черновик)":"№ "+src.ref});
+  const from=src.status==="DRAFT"?visReqs(src):src.reqs.filter(r=>r.status!=="DRAFT");
+  from.forEach(r=>addReq(g,{prof:r.prof,region:r.region,city:r.city,count:r.count,term:r.term,salary:r.salary,schedule:r.schedule,start:r.start}));
+  S.groups.unshift(g);
+  openGroup(g.id);
+  toast("Создано новое обращение — копия группы");
+}
+function validate(g){
+  let bad=0; visReqs(g).forEach(r=>{r.errs=missing(r); if(r.errs.length){bad++; r.open=true;}});
+  return bad;
+}
+function trySend(g){
+  if(validate(g)){ g.showErr=true; render(); const first=visReqs(g).find(r=>r.errs.length); if(first) flash(first.id); toast("Есть незаполненные заявки — группа не отправлена"); return; }
+  g.showErr=false; render();
+  const rs=visReqs(g), s=summ(rs);
+  openModal({title:"Отправка группы заявок",
+    lead:"Будут отправлены "+rs.length+" "+plural(rs.length,"заявка","заявки","заявок")+". После подтверждения группа и все заявки перейдут в статус «Новая»; группе и заявкам присвоят номера.",
+    body:'<div class="sum"><span class="sig">Σ</span><div>Всего запрашивается <b>'+s.n+" "+plural(s.n,"специалист","специалиста","специалистов")+"</b> в <b>"+s.regs.length+" "+plural(s.regs.length,"регионе","регионах","регионах")+"</b>: "+esc(s.regs.join(", "))+".</div></div>"+
+      '<div class="prevs">'+rs.map(r=>prevCard(g,r,'<span class="ref draft">Черновик · '+r.local+"</span>")).join("")+"</div>"+
+      '<label class="chk"><input type="checkbox" id="confChk"><span>Подтверждаю готовность всех '+rs.length+" "+plural(rs.length,"заявки","заявок","заявок")+" к передаче РРУ</span></label>",
+    acts:[{label:"Вернуться к редактированию"},{label:"Отправить "+rs.length+" "+plural(rs.length,"заявку","заявки","заявок"),cls:"primary",disabled:true,id:"confGo",onClick:()=>{closeModal();doSend(g);}}],
+    onMount:root=>{const c=root.querySelector("#confChk"); c.addEventListener("change",e=>{root.querySelector("#confGo").disabled=!e.target.checked;}); setTimeout(()=>c.focus(),0);}
+  });
+}
+function doSend(g){
+  g.status="NEW"; g.ref="…"; g.sent=Date.now(); g.copyOf=g.copyOf;
+  visReqs(g).forEach((r,i)=>{r.status="NEW"; r.n=i+1; r.open=false; r.errs=[]; r.copy=false;});
+  g.nextN=visReqs(g).length+1;
+  render(); toast("Группа отправлена. Номер присваивается…");
+  setTimeout(()=>{ g.ref=YMD+"_"+(S.seq++); if(S.view==="group"&&S.gid===g.id) render(); else if(S.view==="list") render(); toast("Группе присвоен номер "+g.ref); },1600);
+}
+function sendChild(g,r){
+  r.errs=missing(r);
+  if(r.errs.length){ r.open=true; render(); flash(r.id); toast("Заполните обязательные поля заявки"); return; }
+  const before=summ(pubReqs(g)), after=summ(pubReqs(g).concat([r]));
+  const newRegs=after.regs.filter(x=>!before.regs.includes(x));
+  openModal({title:"Отправка заявки в группу № "+esc(g.ref),
+    lead:"Заявка станет «Новой» и появится у клиента. Группа и другие заявки повторно не отправляются — их номера и дата отправки сохраняются.",
+    body:prevCard(g,r,'<span class="ref draft">Черновик · '+r.local+"</span>")+
+      '<div class="delta"><div class="row"><span>Заявок в опубликованном составе</span><b>'+before.count+' → <span class="up">'+after.count+"</span></b></div>"+
+      '<div class="row"><span>Специалистов</span><b>'+before.n+' → <span class="up">'+after.n+"</span></b></div>"+
+      '<div class="row"><span>Регионов</span><b>'+before.regs.length+' → <span class="up">'+after.regs.length+"</span>"+(newRegs.length?" (+ "+esc(newRegs.join(", "))+")":"")+"</b></div></div>"+
+      alertBox("info",IC.info,"Клиент получит уведомление об изменении состава группы.","Повторного согласования клиентом не требуется."),
+    acts:[{label:"Отмена"},{label:"Отправить заявку",cls:"primary",onClick:()=>{
+      closeModal(); r.priv=false; r.status="NEW"; r.n=g.nextN++; r.open=false; r.copy=false; render();
+      toast("Заявка № "+g.ref+"_"+r.n+" отправлена — клиент видит её в группе");
+    }}]});
+}
+
+/* ================= события ================= */
+document.addEventListener("click",e=>{
+  const t=e.target;
+  const go=t.closest("[data-go]"); if(go){e.preventDefault(); if(S.view==="group"){const g=G(S.gid); if(g&&g.unsaved){S.groups=S.groups.filter(x=>x!==g);}} S.view="list"; render(); window.scrollTo(0,0); return;}
+  const tg=t.closest("[data-toggle]"); if(tg){const g=G(+tg.dataset.toggle); g.open=!g.open; renderList(); return;}
+  const op=t.closest("[data-open]"); if(op){openGroup(+op.dataset.open, op.dataset.req?+op.dataset.req:null); return;}
+  const fl=t.closest("[data-filter]"); if(fl){S.filter=fl.dataset.filter; renderList(); return;}
+  const rt=t.closest("[data-rtoggle]"); if(rt){const g=G(S.gid), r=R(g,+rt.dataset.rtoggle); r.open=!r.open; const card=rt.closest(".req"); card.classList.toggle("open",r.open); rt.setAttribute("aria-expanded",r.open); card.querySelector(".req-body").innerHTML=r.open?reqBody(g,r,editableReq(g,r)):""; return;}
+  const gt=t.closest("[data-goto]"); if(gt){const g=G(S.gid), r=R(g,+gt.dataset.goto); r.open=true; const el=document.querySelector('[data-rid="'+r.id+'"]'); if(el&&!el.classList.contains("open")){render();} flash(r.id); const f=document.querySelector('[data-rid="'+r.id+'"] .f.bad input, [data-rid="'+r.id+'"] .f.bad select'); if(f) setTimeout(()=>f.focus({preventScroll:true}),350); return;}
+  const a=t.closest("[data-act]"); if(!a) return;
+  const g=S.gid?G(S.gid):null, r=(g&&a.dataset.r)?R(g,+a.dataset.r):null;
+  switch(a.dataset.act){
+    case "create": createGroup(); break;
+    case "addBlank": addBlank(g); break;
+    case "copyReq": copyReq(g,r); break;
+    case "delReq": delReq(g,r); break;
+    case "copyGroup": copyGroup(g); break;
+    case "send": trySend(g); break;
+    case "sendChild": sendChild(g,r); break;
+    case "saveExit": toast("Черновик сохранён — группа во вкладке «Группы заявок»"); S.view="list"; render(); window.scrollTo(0,0); break;
+  }
+});
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"&&$("#modalRoot").innerHTML){closeModal();return;}
+  if((e.key==="Enter"||e.key===" ")&&e.target.matches('[role="button"]')){e.preventDefault(); e.target.click();}
+});
+/* ввод в форму: модель + частичное обновление, без потери фокуса */
+document.addEventListener("input",e=>{
+  const t=e.target;
+  if(t.id==="q"){S.q=t.value; renderList(); const i=$("#q"); i.focus(); i.setSelectionRange(i.value.length,i.value.length); return;}
+  if(!t.dataset||!t.dataset.k) return;
+  const g=G(S.gid), r=R(g,+t.dataset.r); if(!r) return;
+  r[t.dataset.k]=t.value; r.changed=Date.now();
+  if(r.errs.includes(t.dataset.k)&&!missing(r).includes(t.dataset.k)){ r.errs=r.errs.filter(k=>k!==t.dataset.k); const f=t.closest(".f"); if(f) f.classList.remove("bad"); const card=t.closest(".req"); if(card&&!r.errs.length) card.classList.remove("bad"); }
+  if(g.unsaved){ g.unsaved=false; toast("Черновик сохранён — группа появилась во вкладке «Группы заявок»"); renderGroup(); const f=document.getElementById(t.id); if(f){f.focus(); if(f.setSelectionRange&&f.type!=="number"){f.setSelectionRange(f.value.length,f.value.length);}} return; }
+  if(g.showErr&&!visReqs(g).some(x=>x.errs.length)) g.showErr=false;
+  soft(g);
+});
+
+/* ================= харнесс: роль и сценарии ================= */
+const HINTS={
+  list:"<b>Вкладка «Группы заявок» (§4.4):</b> одна строка на группу, раскрытие состава, фильтр по статусу группы, точный поиск по номеру группы или заявки. У каждого черновика — дата удаления; общего срока группы нет.",
+  create:"<b>Создание (§4.1):</b> пустая форма не создаёт группу — черновик и группа сохраняются после первого ввода. «+ Запрос на специалистов» — пустая форма, «Скопировать заявку» — копия этой заявки без вложений.",
+  errors:"<b>Проверка (§4.2.2):</b> отправка всей группы блокируется, если хотя бы одна заявка невалидна; указаны заявка и поля, переход к полям. Ничего не переходит в «Новую».",
+  confirm:"<b>Подтверждение (§4.2.3):</b> превью каждой заявки, сводка N специалистов в M регионах и явное подтверждение готовности всех заявок.",
+  sent:"<b>Отправлена (§4.2.4, §5.1):</b> группа и все заявки — «Новая», номер группы YYMMDD_N и суффиксы _1, _2. Пока номер не присвоен — «Номер присваивается», это не ошибка.",
+  copygroup:"<b>Копия группы (§4.5):</b> новое обращение-черновик той же организации с независимыми заявками; номера, история, вложения и связи не переносятся.",
+  refill:"<b>Пополнение администратором (§4.3):</b> пока группа «Новая», админ добавляет черновик, видимый только ему, и отправляет его отдельно с показом изменения состава. Пока черновик есть — передача в работу недоступна."
+};
+function setRole(role){
+  S.role=role;
+  document.querySelectorAll("#roleSeg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.role===role));
+}
+function setScen(k){
+  document.querySelectorAll("#scenSeg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.scen===k));
+  $("#hint").innerHTML=HINTS[k];
+}
+function runScenario(k){
+  closeModal();
+  const role = k==="refill" ? "admin" : (k==="list" ? (S?S.role:"client") : "client");
+  seed(role); setRole(role); setScen(k);
+  const g3=G(S.ids.g3), g1=G(S.ids.g1);
+  const fillG3=()=>{const r=g3.reqs[1]; r.region="Республика Татарстан"; r.city="г. Набережные Челны"; r.count=8; r.salary="98 000 ₽"; r.changed=NOW-2*36e5;};
+  switch(k){
+    case "list": render(); break;
+    case "create": render(); createGroup(); break;
+    case "errors": openGroup(g3.id); trySend(g3); break;
+    case "confirm": fillG3(); openGroup(g3.id); trySend(g3); break;
+    case "sent": fillG3(); openGroup(g3.id); doSend(g3); break;
+    case "copygroup": openGroup(g1.id); copyGroup(g1); break;
+    case "refill": { openGroup(g1.id); const r=addReq(g1,{priv:true,open:true,prof:"Бетонщик",region:"Москва",count:6,salary:"100 000 ₽",changed:NOW-40*6e4}); render(); flash(r.id); break; }
+  }
+  try{ history.replaceState(null,"","#"+k); }catch(_){}
+}
+document.querySelectorAll("#roleSeg button").forEach(b=>b.addEventListener("click",()=>{
+  setRole(b.dataset.role);
+  if(S.view==="group"){const g=G(S.gid); if(!g||!canSee(g)) S.view="list";}
+  render();
+}));
+document.querySelectorAll("#scenSeg button").forEach(b=>b.addEventListener("click",()=>runScenario(b.dataset.scen)));
+
+/* ================= меню прототипов ================= */
+(function(){
+  const pm=document.getElementById("protoMenu"); if(!pm) return;
+  const trig=pm.querySelector(".pm-trigger"), p=pm.querySelector(".pm-pop");
+  const cl=()=>{p.hidden=true; trig.setAttribute("aria-expanded","false");};
+  const op=()=>{p.hidden=false; trig.setAttribute("aria-expanded","true");};
+  trig.addEventListener("click",e=>{e.stopPropagation(); p.hidden?op():cl();});
+  document.addEventListener("click",e=>{if(!pm.contains(e.target)) cl();});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape") cl();});
+})();
+
+/* ================= glass-шапка при скролле ================= */
+window.addEventListener("scroll",()=>document.body.classList.toggle("scrolled",window.scrollY>4),{passive:true});
+
+/* старт: сценарий из #якоря (например, request-groups.html#confirm) */
+const start=(location.hash||"").slice(1);
+runScenario(HINTS[start]?start:"list");
+</script>
+</body>
+</html>
