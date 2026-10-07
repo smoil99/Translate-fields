@@ -234,8 +234,16 @@
     font-size:10px;font-weight:700;color:var(--accent);flex:none}
   .partner .pn{font-size:10.5px;color:var(--muted)}
   .partner .pv{font-size:13px;color:#fff;font-weight:500}
-  .collapse{display:flex;align-items:center;justify-content:space-between;cursor:pointer}
-  .collapse .cv{color:var(--muted)}
+  .collapse{display:flex;align-items:center;justify-content:space-between;cursor:pointer;
+    width:100%;background:transparent;border:0;padding:0;font-family:inherit;color:inherit;text-align:left}
+  .collapse .cv{color:var(--muted);transition:transform .18s ease}
+  .collapse[aria-expanded="true"] .cv{transform:rotate(180deg)}
+  .history{display:grid;gap:10px;margin-top:14px}
+  .hrow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .hpill{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:#fff;
+    border:1px solid var(--line-strong);background:rgba(255,255,255,.04);padding:5px 12px;border-radius:20px}
+  .hdot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none}
+  .htime{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
 
   .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
 
@@ -367,7 +375,13 @@
         <div class="partner"><div class="lg">RE</div><div><div class="pn" data-i="s_pin">Партнёр в Индии</div><div class="pv">Reliance Inc.</div></div></div>
       </div>
       <div class="scard">
-        <div class="collapse"><h3 style="margin:0" data-i="s_history">История статусов</h3><span class="cv">⌄</span></div>
+        <button class="collapse" id="historyToggle" type="button" aria-expanded="false" aria-controls="historyBody">
+          <h3 style="margin:0" data-i="s_history">История статусов</h3><span class="cv">⌄</span>
+        </button>
+        <div class="history" id="historyBody" hidden>
+          <div class="hrow"><span class="hpill"><span class="hdot"></span><span data-i="st_new">Новая</span></span><span class="htime">07.10.2026, 11:57:01</span></div>
+          <div class="hrow"><span class="hpill"><span class="hdot"></span><span data-i="status">В работе</span></span><span class="htime">07.10.2026, 11:58:39</span></div>
+        </div>
       </div>
     </aside>
   </div>
@@ -385,6 +399,7 @@ const I = {
   s_date:["Дата выхода на работу","Start date"], s_partners:["Партнёры","Partners"],
   s_employer:["Работодатель","Employer"], s_prf:["Партнёр в РФ","Partner in Russia"], s_pin:["Партнёр в Индии","Partner in India"],
   s_history:["История статусов","Status history"],
+  st_new:["Новая","New"],
 };
 
 /* ---------------- Данные заявки ----------------
@@ -681,6 +696,18 @@ function onScroll(){
 }
 window.addEventListener("scroll", onScroll, {passive:true});
 window.addEventListener("resize", onScroll);
+
+/* раскрытие «Истории статусов» */
+(function(){
+  const ht = document.getElementById("historyToggle");
+  if(!ht) return;
+  ht.addEventListener("click", ()=>{
+    const body = document.getElementById("historyBody");
+    body.hidden = !body.hidden;
+    ht.setAttribute("aria-expanded", String(!body.hidden));
+    setHarnessH();
+  });
+})();
 
 /* меню переключения прототипов */
 (function(){
