@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Commissioner:wght@400;500;600&display=swap">
 <title>Группа заявок</title>
-<meta name="description" content="Прототип по BRD US-019 (migrants/docs#215): создание группы заявок, копирование заявки и группы, проверка и единая отправка, вкладка «Группы заявок» в ЛК клиента и администратора">
+<meta name="description" content="Прототип по BRD US-019 (migrants/docs#215): создание группы заявок, дублирование заявки и группы, проверка и единая отправка, вкладка «Группы заявок» в ЛК клиента и администратора">
 <style>
   /* Layout: ЛК клиента/админа — вкладка «Группы заявок» → экран группы (черновик / отправлена) → модалки DS; сверху харнесс прототипа */
   :root{
@@ -157,6 +157,28 @@
   .f input::placeholder{color:rgba(255,255,255,.38)}
   .f input:hover,.f select:hover{border-color:rgba(255,255,255,.14)}
   .f input:focus,.f select:focus{outline:none; border-color:var(--primary)}
+  .f.wide{grid-column:1 / -1}
+  .f .lab{font-size:13px; color:var(--label)}
+  .f .lab i{color:var(--err); font-style:normal}
+  .f textarea{width:100%; min-height:84px; resize:vertical; border-radius:var(--r-field); background:var(--field); border:1px solid transparent;
+    color:#fff; font:inherit; font-size:15px; padding:12px 14px; transition:border-color .12s}
+  .f textarea::placeholder{color:rgba(255,255,255,.38)}
+  .f textarea:hover{border-color:rgba(255,255,255,.14)}
+  .f textarea:focus{outline:none; border-color:var(--primary)}
+  .f .hint-t{font-size:12px; color:var(--muted2); line-height:1.35}
+  .chips{display:flex; flex-wrap:wrap; gap:8px}
+  .chipb{appearance:none; cursor:pointer; border:1px solid transparent; background:rgba(255,255,255,.10); color:#fff;
+    border-radius:var(--r-pill); padding:6px 14px; font-size:14px; line-height:22px; text-align:left}
+  .chipb:hover{background:rgba(255,255,255,.14)}
+  .chipb[aria-checked="true"]{background:rgba(255,255,255,.14); border-color:rgba(255,255,255,.55)}
+  .f.bad .lab{color:var(--err)}
+  .f.bad .chipb{border-color:rgba(255,102,116,.55)}
+  .f.bad textarea{border-color:var(--err)}
+  .fsec{padding:18px 0 4px; border-bottom:1px solid var(--line)}
+  .fsec:last-of-type{border-bottom:0}
+  .fsec h3{font-size:17px; font-weight:600; margin:0; letter-spacing:-.2px}
+  .fsec .form,.fsec .kv-grid{margin-top:14px}
+  .card .fsec:first-child{padding-top:0}
   .f .err-t{display:none; font-size:12px; color:var(--err)}
   .f.bad label{color:var(--err)}
   .f.bad input,.f.bad select{border-color:var(--err)}
@@ -287,6 +309,7 @@
   .form-note{font-size:12px; color:var(--muted2); margin:14px 0 0}
   .req-acts{display:flex; align-items:center; gap:10px 14px; flex-wrap:wrap; margin-top:16px; padding-top:14px; border-top:1px solid var(--line)}
   .req-acts .note{font-size:12.5px; color:var(--muted); margin-right:auto; flex:1 1 220px}
+  .req-acts .sp,.foot .sp{flex:1}
 
   .add{appearance:none; cursor:pointer; width:100%; margin-top:12px; display:flex; align-items:center; justify-content:center; gap:10px;
     min-height:56px; padding:10px 16px; border-radius:12px; border:1.5px dashed rgba(97,199,214,.55); background:rgba(255,255,255,.025);
@@ -383,7 +406,7 @@
         </a>
         <a role="menuitem" href="request-groups.html" aria-current="page">
           <svg class="pm-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><path d="M17 13.5v7M13.5 17h7"/></svg>
-          <span>Группа заявок<small>Создание, копирование заявки и группы, единая отправка (#215)</small></span>
+          <span>Группа заявок<small>Создание, дублирование заявки и группы, единая отправка (#215)</small></span>
         </a>
       </div>
     </div>
@@ -403,7 +426,7 @@
         <button data-scen="errors" aria-pressed="false">Ошибки</button>
         <button data-scen="confirm" aria-pressed="false">Подтверждение</button>
         <button data-scen="sent" aria-pressed="false">Отправлена</button>
-        <button data-scen="copygroup" aria-pressed="false">Копия группы</button>
+        <button data-scen="copygroup" aria-pressed="false">Дубль группы</button>
         <button data-scen="refill" aria-pressed="false">Пополнение · админ</button>
         <button data-scen="faults" aria-pressed="false">Сбои</button>
       </div>
@@ -457,14 +480,59 @@ const IC={
 const ORG_ME="ИП Гаврилова А. В.";
 const ORGS=[ORG_ME,"ООО «СтройМонтаж»","ООО «ТехноСервис»"];
 const PROFS=["Сварщик","Электромонтажник","Бетонщик","Арматурщик","Каменщик","Маляр","Монтажник"];
-const TERMS=["6 месяцев","1 год","2 года","Другой срок"];
-const SCHED=["5/2, 8 ч/день","6/1, 8 ч/день","Сменный график","Вахта 30/30","Другой"];
-const REQUIRED={prof:"Укажите профессию",region:"Укажите регион работы",count:"Укажите количество специалистов"};
+const REGIONS=["Москва","Московская обл.","Ленинградская обл.","Республика Татарстан","Свердловская обл.","Краснодарский край"];
+const YN=["Да","Нет"];
+/* форма заявки — состав и обязательность по макету «Создать заявку» (Figma 6783:33804) */
+const SECTIONS=[
+  {t:"Способ привлечения и квота",f:[
+    {k:"method",l:"Какой способ привлечения иностранных специалистов?",type:"select",req:1,list:["По квоте на привлечение","Без квоты (патент)","Высококвалифицированные специалисты","Граждане ЕАЭС"]}]},
+  {t:"Потребность в специалистах",f:[
+    {k:"prof",l:"Профессия",type:"select",req:1,list:PROFS},
+    {k:"region",l:"Регион работы",type:"select",req:1,list:REGIONS},
+    {k:"address",l:"Адрес работы",type:"text",wide:1,hint:"Для квотируемых специалистов адрес должен соответствовать согласованной квоте"},
+    {k:"count",l:"Количество специалистов",type:"number",req:1,ph:"Например, 10",hint:"Автоматическая проверка доступного остатка квоты не входит в согласованный объём"},
+    {k:"grade",l:"Грейд или разряд",type:"text",hint:"Заполните, если для вакансии используются грейд или разряд"},
+    {k:"term",l:"Срок привлечения специалистов",type:"chips",req:1,list:["6 месяцев","1 год","2 года","Другой срок"]},
+    {k:"start",l:"Планируемая дата выхода на работу",type:"date",hint:"Планируемую дату можно указать при создании заявки или в черновике"}]},
+  {t:"Условия оплаты",f:[
+    {k:"salary",l:"Заработная плата, ₽",type:"text",req:1,ph:"Например, 120 000",hint:"В месяц, до вычета НДФЛ"},
+    {k:"probation",l:"Предусмотрен ли испытательный срок?",type:"chips",list:YN}]},
+  {t:"Бытовые условия и логистика",f:[
+    {k:"food",l:"Компания организует питание?",type:"chips",req:1,list:["Да","Нет","Другое"]},
+    {k:"housing",l:"Проживание сотрудников",type:"chips",req:1,list:["Общежитие","Хостел","Другое жильё","Компания не предоставляет жильё"],hint:"Если компания предоставляет жильё, оно должно иметь статус жилого помещения"},
+    {k:"transport",l:"Как сотрудники будут добираться до места работы?",type:"chips",req:1,list:["Жильё находится в пешей доступности","Сотрудники добираются самостоятельно","Компания предоставляет транспорт","Другое"]}]},
+  {t:"Организация работ и медицина",f:[
+    {k:"foreman",l:"Нужен ли бригадир?",type:"chips",req:1,list:YN},
+    {k:"med",l:"Требуется расширенный медосмотр?",type:"chips",list:YN}]},
+  {t:"Дополнительные услуги",f:[
+    {k:"tickets",l:"Нужна помощь с покупкой билетов?",type:"chips",req:1,list:["Да","Нет, купим билеты самостоятельно","Другое"]},
+    {k:"meet",l:"Нужна помощь со встречей сотрудников в аэропорту?",type:"chips",req:1,list:["Да","Нет, встретим самостоятельно","Другое"]},
+    {k:"translator",l:"Нужен ли переводчик?",type:"chips",req:1,list:["Да, в штат","Да, на период адаптации","Нет","Другое"]},
+    {k:"extra",l:"Дополнительная информация",type:"textarea"}]},
+  {t:"Профиль вакансии и кандидата",f:[
+    {k:"gender",l:"Предпочтительный пол специалистов",type:"chips",list:["Мужской","Женский","Не имеет значения"],hint:"Указывайте предпочтение только при наличии объективных требований, связанных с характером работы"},
+    {k:"ageMode",l:"Предпочтительный возраст",type:"chips",list:["Диапазон возраста","Не имеет значения"],hint:"Указывайте возраст только при наличии объективных требований, связанных с характером работы"},
+    {k:"ageFrom",l:"Возраст от, лет",type:"number",req:1,when:r=>r.ageMode==="Диапазон возраста"},
+    {k:"ageTo",l:"Возраст до, лет",type:"number",when:r=>r.ageMode==="Диапазон возраста"},
+    {k:"duties",l:"Должностные обязанности",type:"textarea",hint:"Опишите основные задачи специалиста"},
+    {k:"skills",l:"Требования к специалисту",type:"textarea",hint:"Укажите необходимые навыки, опыт, образование, допуски или сертификаты"},
+    {k:"interview",l:"Формат собеседования",type:"chips",list:["Очно","Онлайн","Отбор проводит исполнитель"]}]},
+  {t:"График и переработки",f:[
+    {k:"schedule",l:"Режим работы",type:"chips",list:["5/2, 8 часов в день","6/1, 8 часов в день","Сменный график","Вахта","Другое"]},
+    {k:"overtime",l:"Планируются ли переработки?",type:"chips",list:YN}]}
+];
+const FIELDS=SECTIONS.flatMap(s=>s.f);
+const FKEYS=FIELDS.map(f=>f.k);
+const FDEF=Object.fromEntries(FIELDS.map(f=>[f.k,f]));
+const active=(r,f)=>!f.when||f.when(r);
+const pick=r=>Object.fromEntries(FKEYS.map(k=>[k,r[k]]));
+/* полностью заполненные обязательные поля — для демо-данных */
+const FULL={method:"По квоте на привлечение",term:"1 год",food:"Да",housing:"Общежитие",transport:"Компания предоставляет транспорт",foreman:"Нет",tickets:"Да",meet:"Да",translator:"Да, на период адаптации",schedule:"5/2, 8 часов в день"};
 
 /* ================= модель ================= */
 let uid=0; const nid=()=>++uid;
 let S=null;
-function mkReq(o){return Object.assign({id:nid(),status:"DRAFT",n:null,local:null,prof:"",region:"",city:"",count:"",term:"1 год",salary:"",schedule:"5/2, 8 ч/день",start:"",created:NOW,changed:NOW,priv:false,copy:false,open:false,errs:[]},o);}
+function mkReq(o){return Object.assign({id:nid(),status:"DRAFT",n:null,local:null},Object.fromEntries(FKEYS.map(k=>[k,""])),{created:NOW,changed:NOW,priv:false,copy:false,open:false,errs:[]},o);}
 function mkGroup(o){return Object.assign({id:nid(),org:ORG_ME,author:"client",status:"DRAFT",ref:null,reqs:[],copyOf:null,unsaved:false,open:false,created:NOW,sent:null,localSeq:0,nextN:1,showErr:false},o);}
 function addReq(g,o){const r=mkReq(o);if(r.local==null)r.local=++g.localSeq;g.reqs.push(r);return r;}
 const G=id=>S.groups.find(g=>g.id===id);
@@ -472,16 +540,17 @@ const R=(g,id)=>g.reqs.find(r=>r.id===id);
 
 function seed(role){
   uid=0;
+  const F=o=>Object.assign({},FULL,o);
   const g1=mkGroup({status:"NEW",ref:"260923_4",created:NOW-15*DAY,sent:NOW-14*DAY,nextN:3});
-  addReq(g1,{status:"NEW",n:1,prof:"Сварщик",region:"Московская обл.",city:"г. Химки",count:10,salary:"120 000 ₽",start:"01.11.2026"});
-  addReq(g1,{status:"NEW",n:2,prof:"Электромонтажник",region:"Республика Татарстан",city:"г. Казань",count:14,salary:"110 000 ₽",schedule:"Вахта 30/30",start:"15.11.2026"});
+  addReq(g1,F({status:"NEW",n:1,prof:"Сварщик",region:"Московская обл.",address:"г. Химки, ул. Заводская, 12",count:10,grade:"4 разряд",salary:"120 000",start:"2026-11-01",duties:"Сварка металлоконструкций полуавтоматом",interview:"Онлайн"}));
+  addReq(g1,F({status:"NEW",n:2,prof:"Электромонтажник",region:"Республика Татарстан",address:"г. Казань",count:14,salary:"110 000",schedule:"Вахта",housing:"Хостел",start:"2026-11-15"}));
   const g2=mkGroup({status:"NEW",ref:"260921_2",created:NOW-17*DAY,sent:NOW-16*DAY,nextN:2});
-  addReq(g2,{status:"NEW",n:1,prof:"Маляр",region:"Москва",count:8,term:"6 месяцев",salary:"95 000 ₽",start:"20.11.2026"});
+  addReq(g2,F({status:"NEW",n:1,prof:"Маляр",region:"Москва",count:8,term:"6 месяцев",salary:"95 000",start:"2026-11-20"}));
   const g3=mkGroup({status:"DRAFT",created:NOW-28*DAY});
-  addReq(g3,{prof:"Каменщик",region:"Московская обл.",city:"г. Подольск",count:6,salary:"105 000 ₽",start:"10.12.2026",created:NOW-28*DAY,changed:NOW-3*DAY+5.2*36e5});
-  addReq(g3,{prof:"Арматурщик",created:NOW-28*DAY,changed:NOW-28*DAY});
+  addReq(g3,F({prof:"Каменщик",region:"Московская обл.",address:"г. Подольск",count:6,salary:"105 000",start:"2026-12-10",created:NOW-28*DAY,changed:NOW-3*DAY+5.2*36e5}));
+  addReq(g3,{prof:"Арматурщик",method:"По квоте на привлечение",term:"1 год",created:NOW-28*DAY,changed:NOW-28*DAY});
   const g4=mkGroup({status:"NEW",ref:"260923_4",org:"ООО «ТехноСервис»",created:NOW-15*DAY,sent:NOW-14*DAY,nextN:2});
-  addReq(g4,{status:"NEW",n:1,prof:"Монтажник",region:"Ленинградская обл.",count:12,salary:"115 000 ₽"});
+  addReq(g4,F({status:"NEW",n:1,prof:"Монтажник",region:"Ленинградская обл.",count:12,salary:"115 000"}));
   S={role:role||"client",view:"list",gid:null,filter:"all",q:"",hl:null,groups:[g3,g1,g2,g4],seq:5,ids:{g1:g1.id,g3:g3.id}};
 }
 
@@ -496,7 +565,12 @@ const visReqs=g=>g.reqs.filter(r=>!(r.priv && S.role!=="admin"));
 const pubReqs=g=>g.status==="NEW"?g.reqs.filter(r=>r.status==="NEW"):visReqs(g);
 const privDrafts=g=>g.reqs.filter(r=>r.priv&&r.status==="DRAFT");
 function summ(rs){let n=0,missC=0,missR=0;const regs=[];rs.forEach(r=>{if(+r.count>0)n+=+r.count;else missC++;if(r.region){if(!regs.includes(r.region))regs.push(r.region);}else missR++;});return{count:rs.length,n,regs,missC,missR};}
-function missing(r){return Object.keys(REQUIRED).filter(k=>k==="count"?!(+r.count>0):!String(r[k]||"").trim());}
+const filled=(r,k)=>FDEF[k].type==="number"?+r[k]>0:!!String(r[k]||"").trim();
+const reqFields=r=>FIELDS.filter(f=>f.req&&active(r,f));
+function missing(r){return reqFields(r).filter(f=>!filled(r,f.k)).map(f=>f.k);}
+/* подпись поля в списке ошибок: «Нужен ли бригадир?» → «нужен ли бригадир» */
+const fname=k=>{const l=FDEF[k].l.replace(/[?,]\s*(лет|₽)?$/,"").replace(/\?$/,""); return l.charAt(0).toLowerCase()+l.slice(1);};
+function missList(errs){return errs.length<=3?errs.map(fname).join(", "):errs.slice(0,3).map(fname).join(", ")+" и ещё "+(errs.length-3);}
 const expiry=r=>r.changed+30*DAY;
 function reqRef(g,r){return r.n? (g.ref&&g.ref!=="…"? g.ref+"_"+r.n : null) : null;}
 
@@ -505,21 +579,28 @@ function statusPill(st,wait){
   if(wait) return '<span class="status s-wait"><span class="dot"></span>Отправлена · номер присваивается</span>';
   return st==="NEW"?'<span class="status s-new"><span class="dot"></span>Новая</span>':'<span class="status s-draft"><span class="dot"></span>Черновик</span>';
 }
+/* тег номера группы — только когда номер есть */
 function groupRef(g){
-  if(g.status==="DRAFT") return '<span class="ref draft">Без номера</span>';
-  if(g.ref==="…") return '<span class="ref wait">Номер присваивается</span>';
+  if(!g.ref||g.ref==="…") return "";
   return '<span class="ref"><span class="h">№</span>'+esc(g.ref)+'</span>';
+}
+/* название группы по профессиям: «Сварщик», «Сварщик, Электромонтажник», «Сварщик и ещё 2» */
+function groupName(g){
+  const ps=[...new Set(pubReqs(g).map(r=>r.prof).filter(Boolean))];
+  if(!ps.length) return "Группа заявок";
+  if(ps.length<=2) return ps.join(", ");
+  return ps[0]+" и ещё "+(ps.length-1);
 }
 function childRef(g,r){
   if(r.status==="NEW"){ const ref=reqRef(g,r); return ref?'<span class="ref"><span class="h">№</span>'+esc(ref)+'</span>':'<span class="ref wait">_'+r.n+'</span>'; }
   return '<span class="ref draft">Черновик · '+r.local+'</span>';
 }
 function reqMeta(r){
-  const reg=r.region?esc(r.region)+(r.city?", "+esc(r.city):""):'<i class="miss">регион не указан</i>';
+  const reg=r.region?esc(r.region):'<i class="miss">регион не указан</i>';
   const cnt=+r.count>0?esc(r.count)+" чел.":'<i class="miss">кол-во не указано</i>';
   return "· "+reg+" · "+cnt;
 }
-function progress(r){const k=Object.keys(REQUIRED); return Math.round(k.filter(x=>x==="count"?+r.count>0:String(r[x]||"").trim()).length/k.length*100);}
+function progress(r){const f=reqFields(r); return Math.round(f.filter(x=>filled(r,x.k)).length/f.length*100);}
 function saveState(r,inList){
   if(r.saveErr&&inList) return '<span class="sv err">Не сохранено</span>';
   if(r.saveErr) return '<span class="sv err">Не сохранено</span> <button class="btn link" data-act="retry" data-r="'+r.id+'">Повторить</button>';
@@ -574,7 +655,7 @@ function renderList(){
     '<div class="head"><h1>Группы заявок</h1><div class="acts"><button class="btn primary" data-act="create">'+IC.plus+"Создать заявку</button></div></div>"+
     '<p class="lead">Одна строка — одно обращение. В обращении может быть одна или несколько заявок на специалистов; раскройте строку, чтобы увидеть состав. Статусный фильтр применяется к статусу группы; черновики — только на вкладке «Черновики».</p>'+
     '<div class="toolbar">'+
-      '<label class="search">'+IC.search+'<input id="q" type="search" inputmode="search" autocomplete="off" placeholder="Точный поиск по номеру: 260923_4 или 260923_4_2" value="'+esc(S.q)+'" aria-label="Поиск по номеру группы или заявки"></label>'+
+      '<label class="search">'+IC.search+'<input id="q" type="search" inputmode="search" autocomplete="off" placeholder="Поиск по номеру: 260923_4 или 260923_4_2" value="'+esc(S.q)+'" aria-label="Поиск по номеру группы или заявки"></label>'+
       '<div class="tabs" role="group" aria-label="Статус группы">'+
         [["all","Все"],["DRAFT","Черновики"],["NEW","Новые"]].map(([k,l])=>'<button class="ftab" data-filter="'+k+'" aria-pressed="'+(S.filter===k)+'">'+l+'<span class="n">'+cnt[k]+"</span></button>").join("")+
       "</div>"+
@@ -596,7 +677,7 @@ function groupRow(g){
   return '<div class="grp'+(g.open?" open":"")+'">'+
     '<div class="grp-head" role="button" tabindex="0" aria-expanded="'+g.open+'" data-toggle="'+g.id+'">'+
       '<span class="chev">'+IC.chev+"</span>"+
-      '<div><div class="grp-title">'+groupRef(g)+"<b>Группа заявок</b>"+(g.copyOf?'<span class="tagc">копия</span>':"")+'</div><div class="grp-sub">'+sub+"</div></div>"+
+      '<div><div class="grp-title"><b>'+esc(groupName(g))+"</b>"+groupRef(g)+(g.copyOf?'<span class="tagc">копия</span>':"")+'</div><div class="grp-sub">'+sub+"</div></div>"+
       '<div class="grp-vol"><div>'+vol+'</div><div class="regs">'+(regs||regsMiss?regs+regsMiss:"—")+"</div></div>"+
       "<div>"+statusPill(g.status,g.ref==="…")+"</div>"+
     "</div>"+
@@ -621,8 +702,8 @@ function renderGroup(){
   const C=$("#content");
   C.innerHTML=
     '<button class="backpill" data-go="list">'+IC.back+"Группы заявок</button>"+
-    '<div class="head"><h1>Группа заявок</h1><span id="gRef">'+groupRef(g)+'</span><span id="gStatus">'+statusPill(g.status,g.ref==="…")+'</span>'+
-      '<div class="acts">'+(g.unsaved?"":'<button class="btn sm" data-act="copyGroup">'+IC.copy+"Скопировать группу</button>")+"</div></div>"+
+    '<div class="head"><h1 id="gName">'+esc(groupName(g))+'</h1><span id="gRef">'+groupRef(g)+'</span><span id="gStatus">'+statusPill(g.status,g.ref==="…")+'</span>'+
+      '<div class="acts">'+(g.unsaved?"":'<button class="btn sm" data-act="copyGroup">'+IC.copy+"Дублировать группу</button>")+"</div></div>"+
     '<div class="meta" id="gMeta"></div>'+
     '<div class="stack" id="gNotices"></div>'+
     '<div class="counters" id="gCounters"></div><div class="regline" id="gRegs"></div>'+
@@ -634,13 +715,14 @@ function renderGroup(){
   soft(g);
 }
 function addButton(g){
-  if(g.status==="DRAFT"&&g.author===S.role&&!g.unsaved) return '<button class="add" data-act="addBlank">'+IC.plus+"Добавить заявку</button>";
+  if(g.status==="DRAFT"&&g.author===S.role) return '<button class="add" data-act="addBlank">'+IC.plus+"Добавить заявку</button>";
   if(g.status==="NEW"&&S.role==="admin"&&g.ref!=="…") return '<button class="add" data-act="addBlank">'+IC.plus+"Добавить заявку <small>· черновик будет виден только вам</small></button>";
   return "";
 }
 /* частичное обновление без перерисовки форм (не теряем фокус при вводе) */
 function soft(g){
   const admin=S.role==="admin";
+  $("#gName").textContent=groupName(g);
   $("#gRef").innerHTML=groupRef(g);
   $("#gStatus").innerHTML=statusPill(g.status,g.ref==="…");
   const m=[];
@@ -663,7 +745,7 @@ function notices(g){
   if(g.showErr){
     const bad=visReqs(g).filter(r=>r.errs.length);
     if(bad.length) out.push('<div class="alert err">'+IC.err+'<div class="body">Отправка невозможна: '+bad.length+" "+plural(bad.length,"заявка заполнена","заявки заполнены","заявок заполнены")+" не полностью. Статусы группы и заявок не изменились."+
-      "<ul>"+bad.map(r=>"<li><span>"+(r.n?"№ "+esc(reqRef(g,r)):"Черновик · "+r.local)+" · "+esc(r.prof||"без профессии")+(r.region?", "+esc(r.region):"")+" — не заполнено: "+r.errs.map(k=>({prof:"профессия",region:"регион",count:"количество"})[k]).join(", ")+'</span><button class="btn link" data-goto="'+r.id+'">Перейти к полям</button></li>').join("")+"</ul></div></div>");
+      "<ul>"+bad.map(r=>"<li><span>"+(r.n?"№ "+esc(reqRef(g,r)):"Черновик · "+r.local)+" · "+esc(r.prof||"без профессии")+(r.region?", "+esc(r.region):"")+" — не заполнено: "+esc(missList(r.errs))+'</span><button class="btn link" data-goto="'+r.id+'">Перейти к полям</button></li>').join("")+"</ul></div></div>");
   }
   if(g.saveBlock){ const u=visReqs(g).filter(r=>r.saveErr);
     if(u.length) out.push('<div class="alert err">'+IC.err+'<div class="body">Не удалось сохранить '+(u.length>1?"заявки":"заявку")+" — отправка группы недоступна, пока изменения не сохранены.<ul>"+
@@ -696,12 +778,10 @@ function counters(g){
 function footer(g){
   const admin=S.role==="admin";
   if(g.status==="DRAFT"&&g.author===S.role){
-    const k=visReqs(g).length;
-    return '<p class="note">'+(k===1?"Отправка проверит заявку и переведёт группу":"Отправка проверит все "+k+" "+plural(k,"заявку","заявки","заявок")+" и переведёт группу целиком")+" в статус «Новая». Частичная отправка недоступна.</p>"+
-      '<button class="btn" data-act="saveExit">Сохранить и выйти</button>'+
+    return '<button class="btn" data-act="saveExit">Сохранить и выйти</button><span class="sp"></span>'+
       '<button class="btn primary" data-act="send"'+(g.unsaved?" disabled":"")+">"+IC.send+"Отправить группу</button>";
   }
-  if(g.status==="NEW"&&!admin) return '<p class="note">Группа отправлена РРУ. Состав менять нельзя — чтобы добавить или убрать заявку, обратитесь к менеджеру РРУ. Для нового похожего обращения используйте «Скопировать группу».</p>';
+  if(g.status==="NEW"&&!admin) return '<p class="note">Группа отправлена РРУ. Состав менять нельзя — чтобы добавить или убрать заявку, обратитесь к менеджеру РРУ. Для нового похожего обращения используйте «Дублировать группу».</p>';
   if(g.status==="NEW"&&admin){
     return privDrafts(g).length
       ? '<p class="note warn">Передача группы в работу недоступна, пока в ней есть неотправленный черновик — отправьте или удалите его.</p>'
@@ -724,17 +804,37 @@ function reqCard(g,r){
     '<div class="req-head" role="button" tabindex="0" aria-expanded="'+r.open+'" data-head="'+r.id+'" data-rtoggle="'+r.id+'">'+reqHeadInner(g,r)+"</div>"+
     '<div class="req-body">'+(r.open?reqBody(g,r,ed):"")+"</div></div>";
 }
-function fld(r,k,label,type,opts){
-  const req=REQUIRED[k];
-  const bad=r.errs.includes(k);
+function fld(r,f){
+  const k=f.k, id="f-"+r.id+"-"+k, bad=r.errs.includes(k);
+  const wide=f.wide||f.type==="chips"||f.type==="textarea";
   let ctrl;
-  if(type==="select"){
-    ctrl='<select id="f-'+r.id+"-"+k+'" data-k="'+k+'" data-r="'+r.id+'">'+(opts.empty?'<option value="">Выберите</option>':"")+
-      opts.list.map(o=>'<option'+(String(r[k])===o?" selected":"")+">"+esc(o)+"</option>").join("")+"</select>";
+  if(f.type==="select"){
+    ctrl='<select id="'+id+'" data-k="'+k+'" data-r="'+r.id+'"><option value="">Выберите</option>'+
+      f.list.map(o=>'<option'+(String(r[k])===o?" selected":"")+">"+esc(o)+"</option>").join("")+"</select>";
+  } else if(f.type==="chips"){
+    ctrl='<div class="chips" role="radiogroup" aria-labelledby="'+id+'">'+f.list.map(o=>'<button type="button" class="chipb" role="radio" data-chip="'+k+'" data-r="'+r.id+'" data-v="'+esc(o)+'" aria-checked="'+(r[k]===o)+'">'+esc(o)+"</button>").join("")+"</div>";
+  } else if(f.type==="textarea"){
+    ctrl='<textarea id="'+id+'" data-k="'+k+'" data-r="'+r.id+'" rows="3" placeholder="'+esc(f.ph||"")+'">'+esc(r[k])+"</textarea>";
   } else {
-    ctrl='<input id="f-'+r.id+"-"+k+'" data-k="'+k+'" data-r="'+r.id+'" type="'+(type||"text")+'"'+(type==="number"?' min="1" inputmode="numeric"':"")+' value="'+esc(r[k])+'" placeholder="'+esc(opts&&opts.ph||"")+'">';
+    ctrl='<input id="'+id+'" data-k="'+k+'" data-r="'+r.id+'" type="'+f.type+'"'+(f.type==="number"?' min="1" inputmode="numeric"':"")+' value="'+esc(r[k])+'" placeholder="'+esc(f.ph||"")+'">';
   }
-  return '<div class="f'+(bad?" bad":"")+'" data-f="'+k+'"><label for="f-'+r.id+"-"+k+'">'+label+(req?" <i>*</i>":"")+"</label>"+ctrl+(req?'<span class="err-t">'+req+"</span>":"")+"</div>";
+  const lab=f.type==="chips"?'<span class="lab" id="'+id+'">':'<label for="'+id+'">';
+  return '<div class="f'+(bad?" bad":"")+(wide?" wide":"")+'" data-f="'+k+'">'+lab+esc(f.l)+(f.req?" <i>*</i>":"")+(f.type==="chips"?"</span>":"</label>")+ctrl+
+    (f.req?'<span class="err-t">Обязательное поле</span>':"")+(f.hint?'<span class="hint-t">'+esc(f.hint)+"</span>":"")+"</div>";
+}
+/* значение для просмотра */
+function fv(r,k){
+  const v=r[k]; if(v===""||v==null) return "";
+  if(k==="count") return v+" чел.";
+  if(k==="salary") return v+" ₽";
+  if(k==="start"&&/^\d{4}-\d\d-\d\d$/.test(v)) return v.split("-").reverse().join(".");
+  return String(v);
+}
+function formHtml(r){
+  return SECTIONS.map(sec=>'<section class="fsec"><h3>'+sec.t+'</h3><div class="form">'+sec.f.filter(f=>active(r,f)).map(f=>fld(r,f)).join("")+"</div></section>").join("");
+}
+function viewHtml(r){
+  return SECTIONS.map(sec=>{const fs=sec.f.filter(f=>active(r,f)); return '<section class="fsec"><h3>'+sec.t+'</h3><div class="kv-grid">'+fs.map(f=>kv(f.l.replace(/\?$/,""),fv(r,f.k))).join("")+"</div></section>";}).join("");
 }
 function kv(k,v){return '<div class="kv"><span class="k">'+k+'</span><span class="v">'+(v?esc(v):"—")+"</span></div>";}
 function reqBody(g,r,ed){
@@ -742,25 +842,21 @@ function reqBody(g,r,ed){
   let h="";
   if(r.copy&&r.status==="DRAFT") h+=alertBox("warn",IC.warn,"Независимая копия. Проверьте все условия перед отправкой. Вложения не скопированы.","");
   if(ed){
-    h+='<div class="form">'+
-      fld(r,"prof","Профессия","select",{list:PROFS,empty:true})+
-      fld(r,"count","Количество специалистов","number",{ph:"Например, 10"})+
-      fld(r,"region","Регион работы","text",{ph:"Например, Московская обл."})+
-      fld(r,"city","Город, адрес","text",{ph:"Город, улица"})+
-      fld(r,"term","Срок привлечения","select",{list:TERMS})+
-      fld(r,"start","Планируемая дата выхода","text",{ph:"дд.мм.гггг"})+
-      fld(r,"salary","Заработная плата","text",{ph:"Например, 120 000 ₽"})+
-      fld(r,"schedule","График работы","select",{list:SCHED})+
-    '</div><p class="form-note">Состав полей и обязательность — по требованиям новой формы заявки; в прототипе показаны ключевые поля.</p>';
+    h+=formHtml(r);
   } else {
-    h+='<div class="kv-grid">'+kv("Профессия",r.prof)+kv("Количество специалистов",r.count?r.count+" чел.":"")+kv("Регион работы",r.region)+kv("Город, адрес",r.city)+kv("Срок привлечения",r.term)+kv("Планируемая дата выхода",r.start)+kv("Заработная плата",r.salary)+kv("График работы",r.schedule)+"</div>";
+    h+=viewHtml(r);
   }
   const canCopy=!g.unsaved&&((g.status==="DRAFT"&&g.author===S.role)||(g.status==="NEW"&&admin&&g.ref!=="…"));
   h+='<div class="req-acts">';
-  if(ed) h+='<span class="note">'+(g.unsaved?"Черновик появится после первого ввода — тогда станут доступны копирование и удаление.":g.status==="NEW"?"Черновик администратора: клиент увидит заявку только после её отдельной отправки.":"Сохраняется автоматически. Скопировать или удалить черновик — в меню «⋮» карточки.")+"</span>";
+  /* футер черновика: «Удалить черновик» — в левом углу (как в форме «Создать заявку») */
+  if(ed&&g.unsaved) h+='<span class="note">Черновик появится после первого ввода — тогда станут доступны дублирование и удаление.</span>';
+  else if(ed){
+    h+='<button class="btn sm" data-act="delReq" data-r="'+r.id+'">'+IC.trash+"Удалить черновик</button>";
+    h+=g.status==="NEW"?'<span class="note">Черновик администратора: клиент увидит заявку только после её отдельной отправки.</span>':'<span class="sp"></span>';
+  }
   else h+='<span class="note">'+(admin?"Отправленная заявка. Правка опубликованных данных — по смежному BRD.":"Отправленную заявку клиент не меняет — правки вносит менеджер РРУ.")+"</span>";
   if(r.status==="NEW"&&r.n&&g.ref!=="…") h+='<button class="btn link" data-card="'+g.id+":"+r.id+'">Открыть карточку заявки '+IC.arrow+"</button>";
-  if(canCopy&&!ed) h+='<button class="btn sm" data-act="copyReq" data-r="'+r.id+'">'+IC.copy+"Скопировать заявку</button>";
+  if(canCopy&&!ed) h+='<button class="btn sm" data-act="copyReq" data-r="'+r.id+'">'+IC.copy+"Дублировать заявку</button>";
   if(ed&&g.status==="NEW") h+='<button class="btn sm primary" data-act="sendChild" data-r="'+r.id+'">'+IC.send+"Отправить заявку</button>";
   h+="</div>";
   return h;
@@ -772,15 +868,12 @@ function renderReqCard(){
   if(!g||!r||!canSee(g)||(r.priv&&S.role!=="admin")){S.view="list";return render();}
   const admin=S.role==="admin";
   $("#content").innerHTML=
-    '<button class="backpill" data-open="'+g.id+'">'+IC.back+"Группа заявок "+(g.ref&&g.ref!=="…"?"№ "+esc(g.ref):"")+"</button>"+
+    '<button class="backpill" data-open="'+g.id+'">'+IC.back+esc(groupName(g))+(g.ref&&g.ref!=="…"?" · № "+esc(g.ref):"")+"</button>"+
     '<div class="head"><h1>'+esc(r.prof)+"</h1>"+childRef(g,r)+statusPill(r.status)+"</div>"+
-    '<div class="band"><span class="lbl">Входит в группу</span>'+groupRef(g)+statusPill(g.status,g.ref==="…")+'<span class="sp"></span>'+
+    '<div class="band"><span class="lbl">Входит в группу «'+esc(groupName(g))+'»</span>'+groupRef(g)+statusPill(g.status,g.ref==="…")+'<span class="sp"></span>'+
       '<button class="btn link" data-open="'+g.id+'">Открыть группу '+IC.arrow+"</button>"+
       "<small>"+(admin?"Организация: "+esc(g.org)+". ":"")+"Состав, сводка и отправка — на уровне группы. Карточка заявки — существующая; добавлен только контекст группы.</small></div>"+
-    '<section class="card"><h2>Основная информация</h2><div class="kv-grid">'+
-      kv("Профессия",r.prof)+kv("Количество специалистов",r.count?r.count+" чел.":"")+kv("Регион работы",r.region)+kv("Город, адрес",r.city)+
-      kv("Срок привлечения",r.term)+kv("Планируемая дата выхода",r.start)+kv("Заработная плата",r.salary)+kv("График работы",r.schedule)+
-    "</div></section>";
+    '<section class="card">'+viewHtml(r)+"</section>";
 }
 
 /* ================= модалки (DS glass) ================= */
@@ -801,7 +894,7 @@ function openModal({title,lead,body,acts,onMount}){
 function closeModal(){$("#modalRoot").innerHTML="";}
 function prevCard(g,r,label){
   return '<div class="prev"><div class="prev-h">'+label+"<b>"+esc(r.prof)+"</b></div>"+
-    '<div class="kv-grid">'+kv("Регион",r.region+(r.city?", "+r.city:""))+kv("Специалистов",String(r.count))+kv("Срок",r.term)+kv("Зарплата",r.salary)+kv("График",r.schedule)+kv("Выход",r.start)+"</div></div>";
+    '<div class="kv-grid">'+kv("Регион",r.region+(r.address?", "+r.address:""))+kv("Специалистов",String(r.count))+kv("Срок",r.term)+kv("Зарплата",fv(r,"salary"))+kv("Режим работы",r.schedule)+kv("Выход",fv(r,"start"))+"</div></div>";
 }
 
 /* ================= действия ================= */
@@ -840,7 +933,7 @@ function copyReq(g,src){
   if(src.gone){ g.copyErr="Заявка «"+esc(src.prof||"без профессии")+"» больше недоступна — удалена в другой вкладке или нет прав на просмотр. Обновите страницу; частичная копия не сохраняется."; render(); window.scrollTo({top:0,behavior:"smooth"}); return; }
   if(src.saveErr){ g.copyErr="В заявке «"+esc(src.prof||"без профессии")+"» есть несохранённые изменения. Копия создаётся из сохранённого состояния — сначала повторите сохранение."; render(); window.scrollTo({top:0,behavior:"smooth"}); return; }
   const r=addReq(g,{open:true,copy:true,priv:g.status==="NEW",
-    prof:src.prof,region:src.region,city:src.city,count:src.count,term:src.term,salary:src.salary,schedule:src.schedule,start:src.start,
+    ...pick(src),
     created:Date.now(),changed:Date.now()});
   src.open=false;
   render(); flash(r.id);
@@ -863,7 +956,7 @@ function delReq(g,r){
 function copyGroup(src){
   const g=mkGroup({org:src.org,author:S.role,copyOf:src.status==="DRAFT"?"(черновик)":"№ "+src.ref});
   const from=src.status==="DRAFT"?visReqs(src):src.reqs.filter(r=>r.status!=="DRAFT");
-  from.forEach(r=>addReq(g,{prof:r.prof,region:r.region,city:r.city,count:r.count,term:r.term,salary:r.salary,schedule:r.schedule,start:r.start}));
+  from.forEach(r=>addReq(g,pick(r)));
   S.groups.unshift(g);
   openGroup(g.id);
   toast("Создано новое обращение — копия группы");
@@ -919,8 +1012,7 @@ function openMenu(btn){
   if(menuBtn===btn){ closeMenu(); return; }
   closeMenu();
   m.innerHTML=
-    '<button role="menuitem" data-act="copyReq" data-r="'+rid+'">'+IC.copy+'<span>Скопировать заявку<small>Независимая копия этой заявки в той же группе, без вложений</small></span></button>'+
-    '<button role="menuitem" class="del" data-act="delReq" data-r="'+rid+'">'+IC.trash+'<span>Удалить черновик<small>С подтверждением; остальные заявки сохранятся</small></span></button>';
+    '<button role="menuitem" data-act="copyReq" data-r="'+rid+'">'+IC.copy+'<span>Дублировать заявку<small>Независимая копия этой заявки в той же группе, без вложений</small></span></button>';
   m.hidden=false; menuBtn=btn; btn.setAttribute("aria-expanded","true");
   const rc=btn.getBoundingClientRect(), mr=m.getBoundingClientRect();
   let top=rc.bottom+6, left=rc.right-mr.width;
@@ -948,7 +1040,12 @@ document.addEventListener("click",e=>{
   if(t.closest("[data-act]")&&t.closest("[data-rtoggle]")){/* «Повторить» в шапке заявки — не сворачивать */} else {
   const rt=t.closest("[data-rtoggle]"); if(rt){const g=G(S.gid), r=R(g,+rt.dataset.rtoggle); r.open=!r.open; const card=rt.closest(".req"); card.classList.toggle("open",r.open); rt.setAttribute("aria-expanded",r.open); card.querySelector(".req-body").innerHTML=r.open?reqBody(g,r,editableReq(g,r)):""; return;}
   }
-  const gt=t.closest("[data-goto]"); if(gt){const g=G(S.gid), r=R(g,+gt.dataset.goto); r.open=true; const el=document.querySelector('[data-rid="'+r.id+'"]'); if(el&&!el.classList.contains("open")){render();} flash(r.id); const f=document.querySelector('[data-rid="'+r.id+'"] .f.bad input, [data-rid="'+r.id+'"] .f.bad select'); if(f) setTimeout(()=>f.focus({preventScroll:true}),350); return;}
+  const gt=t.closest("[data-goto]"); if(gt){const g=G(S.gid), r=R(g,+gt.dataset.goto); r.open=true; const el=document.querySelector('[data-rid="'+r.id+'"]'); if(el&&!el.classList.contains("open")){render();} flash(r.id); const f=document.querySelector('[data-rid="'+r.id+'"] .f.bad input, [data-rid="'+r.id+'"] .f.bad select, [data-rid="'+r.id+'"] .f.bad textarea, [data-rid="'+r.id+'"] .f.bad .chipb'); if(f) setTimeout(()=>f.focus({preventScroll:true}),350); return;}
+  const ch=t.closest("[data-chip]"); if(ch){
+    const g=G(S.gid), r=R(g,+ch.dataset.r), k=ch.dataset.chip, v=ch.dataset.v;
+    ch.parentNode.querySelectorAll("[data-chip]").forEach(b=>b.setAttribute("aria-checked",b===ch));
+    fieldChanged(g,r,k,v,ch); return;
+  }
   const a=t.closest("[data-act]"); if(!a) return;
   const g=S.gid?G(S.gid):null, r=(g&&a.dataset.r)?R(g,+a.dataset.r):null;
   switch(a.dataset.act){
@@ -976,22 +1073,28 @@ document.addEventListener("input",e=>{
   if(t.id==="q"){S.q=t.value; renderList(); const i=$("#q"); i.focus(); i.setSelectionRange(i.value.length,i.value.length); return;}
   if(!t.dataset||!t.dataset.k) return;
   const g=G(S.gid), r=R(g,+t.dataset.r); if(!r) return;
-  r[t.dataset.k]=t.value; r.changed=Date.now();
+  fieldChanged(g,r,t.dataset.k,t.value,t);
+});
+/* общий путь изменения поля: ввод в инпут или выбор чипа */
+function fieldChanged(g,r,k,v,t){
+  r[k]=v; r.changed=Date.now();
   if(!r.saveErr){ r.saving=true; clearTimeout(r._sv); r._sv=setTimeout(()=>{ r.saving=false; r.savedAt=Date.now(); if(S.view==="group"&&S.gid===g.id) soft(g); },700); }
-  if(r.errs.includes(t.dataset.k)&&!missing(r).includes(t.dataset.k)){ r.errs=r.errs.filter(k=>k!==t.dataset.k); const f=t.closest(".f"); if(f) f.classList.remove("bad"); const card=t.closest(".req"); if(card&&!r.errs.length) card.classList.remove("bad"); }
-  if(g.unsaved){ g.unsaved=false; toast("Черновик сохранён — группа появилась во вкладке «Группы заявок»"); renderGroup(); const f=document.getElementById(t.id); if(f){f.focus(); if(f.setSelectionRange&&f.type!=="number"){f.setSelectionRange(f.value.length,f.value.length);}} return; }
+  r.errs=r.errs.filter(x=>missing(r).includes(x));   /* скрытые поля (возраст) и заполненные — снимаем ошибку */
+  if(k==="ageMode"){ if(g.unsaved){ g.unsaved=false; toast("Черновик сохранён — группа появилась во вкладке «Группы заявок»"); } renderGroup(); return; }   /* показать/скрыть «Возраст от/до» */
+  if(!r.errs.includes(k)){ const f=t.closest(".f"); if(f) f.classList.remove("bad"); const card=t.closest(".req"); if(card&&!r.errs.length) card.classList.remove("bad"); }
+  if(g.unsaved){ g.unsaved=false; toast("Черновик сохранён — группа появилась во вкладке «Группы заявок»"); renderGroup(); const f=document.getElementById(t.id); if(f){f.focus(); if(f.tagName==="TEXTAREA"||f.type==="text"){f.setSelectionRange(f.value.length,f.value.length);}} return; }
   if(g.showErr&&!visReqs(g).some(x=>x.errs.length)) g.showErr=false;
   soft(g);
-});
+}
 
 /* ================= харнесс: роль и сценарии ================= */
 const HINTS={
-  list:"<b>Вкладка «Группы заявок» (§4.4):</b> одна строка на группу, раскрытие состава, фильтр по статусу группы, точный поиск по номеру группы или заявки. Черновики — только на вкладке «Черновики»; у каждого — прогресс заполнения и дата автоматического удаления, общего срока группы нет. Отправленная заявка открывает свою карточку.",
-  create:"<b>Создание (§4.1):</b> пустая форма не создаёт группу — черновик и группа сохраняются после первого ввода. «Добавить заявку» — пустая форма; «Скопировать заявку» и «Удалить черновик» — в меню «⋮» карточки черновика (копия этой заявки без вложений). Индикатор сохранения и срок хранения — по T-66.",
+  list:"<b>Вкладка «Группы заявок» (§4.4):</b> одна строка на группу, раскрытие состава, фильтр по статусу группы, поиск по номеру группы или заявки. Черновики — только на вкладке «Черновики»; у каждого — прогресс заполнения и дата автоматического удаления, общего срока группы нет. Отправленная заявка открывает свою карточку.",
+  create:"<b>Создание (§4.1):</b> пустая форма не создаёт группу — черновик и группа сохраняются после первого ввода. «Добавить заявку» — пустая форма; «Дублировать заявку» — в меню «⋮» карточки черновика (независимая копия этой заявки без вложений); «Удалить черновик» — слева в футере заявки. Кнопка «Добавить заявку» доступна сразу, ещё до заполнения первой. Индикатор сохранения и срок хранения — по T-66.",
   errors:"<b>Проверка (§4.2.2):</b> отправка всей группы блокируется, если хотя бы одна заявка невалидна; указаны заявка и поля, переход к полям. Ничего не переходит в «Новую».",
   confirm:"<b>Подтверждение (§4.2.3):</b> превью каждой заявки, сводка N специалистов в M регионах и явное подтверждение готовности всех заявок.",
   sent:"<b>Отправлена (§4.2.4, §5.1):</b> группа и все заявки — «Новая», номер группы YYMMDD_N и суффиксы _1, _2. Пока номер не присвоен — «Номер присваивается», это не ошибка.",
-  copygroup:"<b>Копия группы (§4.5):</b> новое обращение-черновик той же организации с независимыми заявками; номера, история, вложения и связи не переносятся.",
+  copygroup:"<b>Дублирование группы (§4.5):</b> новое обращение-черновик той же организации с независимыми заявками; номера, история, вложения и связи не переносятся.",
   faults:"<b>Сбои (§4.1.4, §4.1.6, §4.2.1; T-66 §4.6–4.7):</b> «Не сохранено» + «Повторить»; отправка и «Сохранить и выйти» блокируются с указанием заявки; копия не создаётся из несохранённой или недоступной заявки, частичных копий нет.",
   refill:"<b>Пополнение администратором (§4.3):</b> пока группа «Новая», админ добавляет черновик, видимый только ему, и отправляет его отдельно с показом изменения состава. Пока черновик есть — передача в работу недоступна."
 };
@@ -1008,7 +1111,7 @@ function runScenario(k){
   const role = k==="refill" ? "admin" : (k==="list" ? (S?S.role:"client") : "client");
   seed(role); setRole(role); setScen(k);
   const g3=G(S.ids.g3), g1=G(S.ids.g1);
-  const fillG3=()=>{const r=g3.reqs[1]; r.region="Республика Татарстан"; r.city="г. Набережные Челны"; r.count=8; r.salary="98 000 ₽"; r.changed=NOW-2*36e5;};
+  const fillG3=()=>{const r=g3.reqs[1]; Object.assign(r,FULL,{region:"Республика Татарстан",address:"г. Набережные Челны",count:8,salary:"98 000"}); r.changed=NOW-2*36e5;};
   switch(k){
     case "list": render(); break;
     case "create": render(); createGroup(); break;
@@ -1017,7 +1120,7 @@ function runScenario(k){
     case "sent": fillG3(); openGroup(g3.id); doSend(g3); break;
     case "copygroup": openGroup(g1.id); copyGroup(g1); break;
     case "faults": { const a=g3.reqs[0], b=g3.reqs[1]; a.saveErr=true; a.open=true; b.gone=true; openGroup(g3.id); copyReq(g3,b); break; }
-    case "refill": { openGroup(g1.id); const r=addReq(g1,{priv:true,open:true,prof:"Бетонщик",region:"Москва",count:6,salary:"100 000 ₽",changed:NOW-40*6e4}); render(); flash(r.id); break; }
+    case "refill": { openGroup(g1.id); const r=addReq(g1,Object.assign({},FULL,{priv:true,open:true,prof:"Бетонщик",region:"Москва",count:6,salary:"100 000",changed:NOW-40*6e4})); render(); flash(r.id); break; }
   }
   try{ history.replaceState(null,"","#"+k); }catch(_){}
 }
