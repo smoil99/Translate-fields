@@ -261,7 +261,9 @@
   .req-right{margin-left:auto; display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end}
   .dmeta{font-size:12px; color:var(--muted); white-space:nowrap; font-variant-numeric:tabular-nums}
   .dmeta .exp.soon{color:var(--warn)}
-  .dmeta .unsaved{color:var(--label)}
+  .dmeta .sv{color:var(--text-2)}
+  .dmeta .sv.err{color:var(--err); font-weight:500}
+  .dmeta .btn.link{font-size:12px; padding:0 2px; color:var(--accent)}
   .req.bad .miss{color:var(--err)}
   .req-body{display:none; padding:4px 16px 16px; border-top:1px solid var(--line)}
   .req.open .req-body{display:block}
@@ -284,6 +286,19 @@
   .foot{display:flex; flex-wrap:wrap; align-items:center; gap:12px 14px; margin-top:24px; padding-top:20px; border-top:1px solid var(--line)}
   .foot .note{flex:1 1 300px; font-size:13px; color:var(--muted)}
   .foot .note.warn{color:var(--warn)}
+  /* отправка доступна из любой заявки: панель действий липнет к низу экрана (BRD §4.2.1) */
+  .foot.sticky{position:sticky; bottom:0; z-index:20; margin:24px -16px 0; padding:14px 16px calc(14px + env(safe-area-inset-bottom,0px));
+    background:rgba(24,28,31,.82); -webkit-backdrop-filter:blur(16px) saturate(1.4); backdrop-filter:blur(16px) saturate(1.4);
+    border-top:1px solid var(--line); border-radius:14px 14px 0 0}
+  /* карточка вложенной заявки */
+  .band{display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px; margin-top:18px; padding:14px 18px; border-radius:14px;
+    background:var(--accent-dim); box-shadow:inset 0 0 0 1px rgba(97,199,214,.25)}
+  .band .lbl{color:var(--text-2); font-weight:500}
+  .band .sp{flex:1}
+  .band small{flex-basis:100%; color:var(--muted); font-size:12.5px}
+  .card{margin-top:18px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:24px clamp(18px,2.6vw,30px)}
+  .card h2{font-size:17px; font-weight:600; margin:0}
+  .card .kv-grid{margin-top:18px}
 
   /* ---------- модалка DS (glass) ---------- */
   .mbg{position:fixed; inset:0; z-index:80; background:rgba(8,11,13,.55); display:grid; place-items:start center;
@@ -378,6 +393,7 @@
         <button data-scen="sent" aria-pressed="false">Отправлена</button>
         <button data-scen="copygroup" aria-pressed="false">Копия группы</button>
         <button data-scen="refill" aria-pressed="false">Пополнение · админ</button>
+        <button data-scen="faults" aria-pressed="false">Сбои</button>
       </div>
     </div>
     <p class="hint" id="hint"></p>
@@ -489,13 +505,22 @@ function reqMeta(r){
   const cnt=+r.count>0?esc(r.count)+" чел.":'<i class="miss">кол-во не указано</i>';
   return "· "+reg+" · "+cnt;
 }
-function draftMeta(g,r){
-  if(r.status!=="DRAFT") return "";
-  if(g.unsaved) return '<span class="dmeta"><span class="unsaved">Не сохранено</span></span>';
+function progress(r){const k=Object.keys(REQUIRED); return Math.round(k.filter(x=>x==="count"?+r.count>0:String(r[x]||"").trim()).length/k.length*100);}
+function saveState(r,inList){
+  if(r.saveErr&&inList) return '<span class="sv err">Не сохранено</span>';
+  if(r.saveErr) return '<span class="sv err">Не сохранено</span> <button class="btn link" data-act="retry" data-r="'+r.id+'">Повторить</button>';
+  if(r.saving) return '<span class="sv">Сохранение…</span>';
+  if(r.savedAt) return '<span class="sv">Сохранено '+fmtT(r.savedAt)+"</span>";
+  return "";
+}
+function expiryText(r){
   const left=Math.ceil((expiry(r)-NOW)/DAY);
-  const saved=(NOW-r.changed<DAY)?"Сохранено в "+fmtT(r.changed):"Изменено "+fmtD(r.changed);
-  const exp=left<=3?'<span class="exp soon">удалится через '+left+" "+plural(left,"день","дня","дней")+" ("+fmtDM(expiry(r))+")</span>":'<span class="exp">удалится '+fmtD(expiry(r))+"</span>";
-  return '<span class="dmeta">'+saved+" · "+exp+"</span>";
+  return left<=7?'<span class="exp soon">Удалим через '+left+" "+plural(left,"день","дня","дней")+"</span>":'<span class="exp">Дата автоматического удаления: '+fmtD(expiry(r))+"</span>";
+}
+function draftMeta(g,r,inList){
+  if(r.status!=="DRAFT"||g.unsaved) return "";   /* до первого ввода индикатора нет */
+  const sv=saveState(r,inList);
+  return '<span class="dmeta">'+(sv?sv+" · ":"")+"Заполнено "+progress(r)+" % · "+expiryText(r)+"</span>";
 }
 
 /* ================= навигация ЛК ================= */
@@ -512,8 +537,8 @@ function renderNav(){
 function renderList(){
   const admin=S.role==="admin";
   const vis=S.groups.filter(canSee);
-  const cnt={all:vis.length,DRAFT:vis.filter(g=>g.status==="DRAFT").length,NEW:vis.filter(g=>g.status==="NEW").length};
-  let rows=vis.filter(g=>S.filter==="all"||g.status===S.filter);
+  const cnt={all:vis.filter(g=>g.status!=="DRAFT").length,DRAFT:vis.filter(g=>g.status==="DRAFT").length,NEW:vis.filter(g=>g.status==="NEW").length};
+  let rows=vis.filter(g=>S.filter==="all"?g.status!=="DRAFT":g.status===S.filter);
   let note="";
   S.hl=null;
   const q=S.q.trim();
@@ -533,7 +558,7 @@ function renderList(){
   C.innerHTML=
     '<p class="crumbs">'+(admin?"Администрирование":"Личный кабинет")+" / Заявки</p>"+
     '<div class="head"><h1>Группы заявок</h1><div class="acts"><button class="btn primary" data-act="create">'+IC.plus+"Создать заявку</button></div></div>"+
-    '<p class="lead">Одна строка — одно обращение. В обращении может быть одна или несколько заявок на специалистов; раскройте строку, чтобы увидеть состав. Статусный фильтр применяется к статусу группы.</p>'+
+    '<p class="lead">Одна строка — одно обращение. В обращении может быть одна или несколько заявок на специалистов; раскройте строку, чтобы увидеть состав. Статусный фильтр применяется к статусу группы; черновики — только на вкладке «Черновики».</p>'+
     '<div class="toolbar">'+
       '<label class="search">'+IC.search+'<input id="q" type="search" inputmode="search" autocomplete="off" placeholder="Точный поиск по номеру: 260923_4 или 260923_4_2" value="'+esc(S.q)+'" aria-label="Поиск по номеру группы или заявки"></label>'+
       '<div class="tabs" role="group" aria-label="Статус группы">'+
@@ -562,9 +587,9 @@ function groupRow(g){
       "<div>"+statusPill(g.status,g.ref==="…")+"</div>"+
     "</div>"+
     '<div class="grp-kids">'+kids.map(r=>
-      '<button class="kid'+(S.hl===r.id?" hit":"")+'" data-open="'+g.id+'" data-req="'+r.id+'">'+childRef(g,r)+
+      '<button class="kid'+(S.hl===r.id?" hit":"")+'" '+(r.status==="NEW"?'data-card="'+g.id+":"+r.id+'"':'data-open="'+g.id+'" data-req="'+r.id+'"')+">"+childRef(g,r)+
       '<span class="t">'+esc(r.prof||"Заявка без профессии")+'</span><span class="m">'+reqMeta(r)+"</span>"+
-      '<span class="r">'+(r.priv?'<span class="lock">'+IC.lock+"только вам</span>":"")+(r.status==="DRAFT"?draftMeta(g,r):"")+statusPill(r.status)+"</span></button>"
+      '<span class="r">'+(r.priv?'<span class="lock">'+IC.lock+"только вам</span>":"")+(r.status==="DRAFT"?draftMeta(g,r,true):"")+statusPill(r.status)+"</span></button>"
     ).join("")+
       '<button class="btn link open-g" data-open="'+g.id+'">Открыть группу '+IC.arrow+"</button>"+
     "</div></div>";
@@ -595,8 +620,8 @@ function renderGroup(){
   soft(g);
 }
 function addButton(g){
-  if(g.status==="DRAFT"&&g.author===S.role&&!g.unsaved) return '<button class="add" data-act="addBlank">'+IC.plus+"Запрос на специалистов</button>";
-  if(g.status==="NEW"&&S.role==="admin"&&g.ref!=="…") return '<button class="add" data-act="addBlank">'+IC.plus+"Запрос на специалистов <small>· черновик будет виден только вам</small></button>";
+  if(g.status==="DRAFT"&&g.author===S.role&&!g.unsaved) return '<button class="add" data-act="addBlank">'+IC.plus+"Добавить заявку</button>";
+  if(g.status==="NEW"&&S.role==="admin"&&g.ref!=="…") return '<button class="add" data-act="addBlank">'+IC.plus+"Добавить заявку <small>· черновик будет виден только вам</small></button>";
   return "";
 }
 /* частичное обновление без перерисовки форм (не теряем фокус при вводе) */
@@ -615,6 +640,7 @@ function soft(g){
   $("#gRegs").innerHTML=s.regs.length?"Регионы: <b>"+esc(s.regs.join(", "))+"</b>":"";
   visReqs(g).forEach(r=>{const h=document.querySelector('[data-head="'+r.id+'"]');if(h)h.innerHTML=reqHeadInner(g,r);});
   $("#gFoot").innerHTML=footer(g);
+  $("#gFoot").classList.toggle("sticky",g.status==="DRAFT"&&g.author===S.role);
 }
 function notices(g){
   const admin=S.role==="admin"; const out=[];
@@ -625,6 +651,10 @@ function notices(g){
     if(bad.length) out.push('<div class="alert err">'+IC.err+'<div class="body">Отправка невозможна: '+bad.length+" "+plural(bad.length,"заявка заполнена","заявки заполнены","заявок заполнены")+" не полностью. Статусы группы и заявок не изменились."+
       "<ul>"+bad.map(r=>"<li><span>"+(r.n?"№ "+esc(reqRef(g,r)):"Черновик · "+r.local)+" · "+esc(r.prof||"без профессии")+(r.region?", "+esc(r.region):"")+" — не заполнено: "+r.errs.map(k=>({prof:"профессия",region:"регион",count:"количество"})[k]).join(", ")+'</span><button class="btn link" data-goto="'+r.id+'">Перейти к полям</button></li>').join("")+"</ul></div></div>");
   }
+  if(g.saveBlock){ const u=visReqs(g).filter(r=>r.saveErr);
+    if(u.length) out.push('<div class="alert err">'+IC.err+'<div class="body">Не удалось сохранить '+(u.length>1?"заявки":"заявку")+" — отправка группы недоступна, пока изменения не сохранены.<ul>"+
+      u.map(r=>"<li><span>Черновик · "+r.local+" · "+esc(r.prof||"без профессии")+' — «Не сохранено»</span><button class="btn link" data-act="retry" data-r="'+r.id+'">Повторить сохранение</button></li>').join("")+"</ul></div></div>"); }
+  if(g.copyErr) out.push(alertBox("err",IC.err,"Копия не создана.",g.copyErr));
   if(g.status==="NEW"&&g.ref==="…") out.push(alertBox("info",IC.info,"Группа отправлена. Номер присваивается.","Отправка выполнена успешно — повторять её не нужно. Номер появится автоматически."));
   if(g.status==="NEW"&&admin&&privDrafts(g).length) out.push(alertBox("warn",IC.lock,"Черновик администратора виден только вам и не входит в опубликованную сводку.","Отправьте его отдельно — тогда клиент увидит заявку и обновлённый состав. Группа и другие заявки повторно не отправляются."));
   return out.join("");
@@ -714,11 +744,29 @@ function reqBody(g,r,ed){
   h+='<div class="req-acts">';
   if(ed) h+='<span class="note">'+(g.unsaved?"Черновик появится после первого ввода — тогда станут доступны копирование и удаление.":g.status==="NEW"?"Черновик администратора: клиент увидит заявку только после её отдельной отправки.":"Сохраняется автоматически. Копия создаётся из сохранённого состояния этой заявки, без вложений.")+"</span>";
   else h+='<span class="note">'+(admin?"Отправленная заявка. Правка опубликованных данных — по смежному BRD.":"Отправленную заявку клиент не меняет — правки вносит менеджер РРУ.")+"</span>";
+  if(r.status==="NEW"&&r.n&&g.ref!=="…") h+='<button class="btn link" data-card="'+g.id+":"+r.id+'">Открыть карточку заявки '+IC.arrow+"</button>";
   if(canCopy) h+='<button class="btn sm" data-act="copyReq" data-r="'+r.id+'">'+IC.copy+"Скопировать заявку</button>";
   if(ed&&!g.unsaved) h+='<button class="btn link del" data-act="delReq" data-r="'+r.id+'">'+IC.trash+"Удалить черновик</button>";
   if(ed&&g.status==="NEW") h+='<button class="btn sm primary" data-act="sendChild" data-r="'+r.id+'">'+IC.send+"Отправить заявку</button>";
   h+="</div>";
   return h;
+}
+
+/* ================= экран: карточка вложенной заявки ================= */
+function renderReqCard(){
+  const g=G(S.gid); const r=g&&R(g,S.rid);
+  if(!g||!r||!canSee(g)||(r.priv&&S.role!=="admin")){S.view="list";return render();}
+  const admin=S.role==="admin";
+  $("#content").innerHTML=
+    '<button class="backpill" data-open="'+g.id+'">'+IC.back+"Группа заявок "+(g.ref&&g.ref!=="…"?"№ "+esc(g.ref):"")+"</button>"+
+    '<div class="head"><h1>'+esc(r.prof)+"</h1>"+childRef(g,r)+statusPill(r.status)+"</div>"+
+    '<div class="band"><span class="lbl">Входит в группу</span>'+groupRef(g)+statusPill(g.status,g.ref==="…")+'<span class="sp"></span>'+
+      '<button class="btn link" data-open="'+g.id+'">Открыть группу '+IC.arrow+"</button>"+
+      "<small>"+(admin?"Организация: "+esc(g.org)+". ":"")+"Состав, сводка и отправка — на уровне группы. Карточка заявки — существующая; добавлен только контекст группы.</small></div>"+
+    '<section class="card"><h2>Основная информация</h2><div class="kv-grid">'+
+      kv("Профессия",r.prof)+kv("Количество специалистов",r.count?r.count+" чел.":"")+kv("Регион работы",r.region)+kv("Город, адрес",r.city)+
+      kv("Срок привлечения",r.term)+kv("Планируемая дата выхода",r.start)+kv("Заработная плата",r.salary)+kv("График работы",r.schedule)+
+    "</div></section>";
 }
 
 /* ================= модалки (DS glass) ================= */
@@ -743,7 +791,7 @@ function prevCard(g,r,label){
 }
 
 /* ================= действия ================= */
-function render(){ renderNav(); S.view==="group"?renderGroup():renderList(); }
+function render(){ renderNav(); S.view==="group"?renderGroup():S.view==="req"?renderReqCard():renderList(); }
 function openGroup(id,reqId){
   S.view="group"; S.gid=id;
   const g=G(id);
@@ -774,6 +822,9 @@ function addBlank(g){
   toast(g.status==="NEW"?"Добавлен черновик — виден только вам":"Добавлена пустая заявка");
 }
 function copyReq(g,src){
+  g.copyErr=null;
+  if(src.gone){ g.copyErr="Заявка «"+esc(src.prof||"без профессии")+"» больше недоступна — удалена в другой вкладке или нет прав на просмотр. Обновите страницу; частичная копия не сохраняется."; render(); window.scrollTo({top:0,behavior:"smooth"}); return; }
+  if(src.saveErr){ g.copyErr="В заявке «"+esc(src.prof||"без профессии")+"» есть несохранённые изменения. Копия создаётся из сохранённого состояния — сначала повторите сохранение."; render(); window.scrollTo({top:0,behavior:"smooth"}); return; }
   const r=addReq(g,{open:true,copy:true,priv:g.status==="NEW",
     prof:src.prof,region:src.region,city:src.city,count:src.count,term:src.term,salary:src.salary,schedule:src.schedule,start:src.start,
     created:Date.now(),changed:Date.now()});
@@ -783,8 +834,10 @@ function copyReq(g,src){
 }
 function delReq(g,r){
   const last=g.status==="DRAFT"&&visReqs(g).length===1;
-  openModal({title:"Удалить черновик?",
-    lead:"«"+esc(r.prof||"Новая заявка")+"» (Черновик · "+r.local+") будет удалён."+(last?" Это последняя заявка — пустая группа тоже будет удалена.":" Остальные заявки сохранятся со своими сроками."),
+  openModal({title:"Удаление черновика",
+    lead:"Черновик будет удалён без возможности восстановления. Продолжить?",
+    body:'<div class="prev"><div class="prev-h"><span class="ref draft">Черновик · '+r.local+"</span><b>"+esc(r.prof||"Новая заявка")+'</b></div></div>'+
+      (last?alertBox("warn",IC.warn,"Это последняя заявка в группе — пустая группа тоже будет удалена.",""):'<p class="m-lead" style="margin:0">Остальные заявки группы сохранятся со своими сроками хранения.</p>'),
     acts:[{label:"Отмена"},{label:"Удалить",cls:"danger",onClick:()=>{
       closeModal();
       g.reqs=g.reqs.filter(x=>x.id!==r.id);
@@ -806,6 +859,7 @@ function validate(g){
   return bad;
 }
 function trySend(g){
+  if(visReqs(g).some(r=>r.saveErr)){ g.saveBlock=true; render(); window.scrollTo({top:0,behavior:"smooth"}); toast("Есть несохранённая заявка — группа не отправлена"); return; }
   if(validate(g)){ g.showErr=true; render(); const first=visReqs(g).find(r=>r.errs.length); if(first) flash(first.id); toast("Есть незаполненные заявки — группа не отправлена"); return; }
   g.showErr=false; render();
   const rs=visReqs(g), s=summ(rs);
@@ -846,11 +900,14 @@ function sendChild(g,r){
 /* ================= события ================= */
 document.addEventListener("click",e=>{
   const t=e.target;
-  const go=t.closest("[data-go]"); if(go){e.preventDefault(); if(S.view==="group"){const g=G(S.gid); if(g&&g.unsaved){S.groups=S.groups.filter(x=>x!==g);}} S.view="list"; render(); window.scrollTo(0,0); return;}
+  const go=t.closest("[data-go]"); if(go){e.preventDefault(); if(S.view==="group"){const g=G(S.gid); if(g&&g.unsaved){S.groups=S.groups.filter(x=>x!==g);} else if(g&&g.status==="DRAFT"){S.filter="DRAFT";}} S.view="list"; render(); window.scrollTo(0,0); return;}
+  const cd=t.closest("[data-card]"); if(cd){const [gid,rid]=cd.dataset.card.split(":").map(Number); S.view="req"; S.gid=gid; S.rid=rid; render(); window.scrollTo(0,0); return;}
   const tg=t.closest("[data-toggle]"); if(tg){const g=G(+tg.dataset.toggle); g.open=!g.open; renderList(); return;}
   const op=t.closest("[data-open]"); if(op){openGroup(+op.dataset.open, op.dataset.req?+op.dataset.req:null); return;}
   const fl=t.closest("[data-filter]"); if(fl){S.filter=fl.dataset.filter; renderList(); return;}
+  if(t.closest("[data-act]")&&t.closest("[data-rtoggle]")){/* «Повторить» в шапке заявки — не сворачивать */} else {
   const rt=t.closest("[data-rtoggle]"); if(rt){const g=G(S.gid), r=R(g,+rt.dataset.rtoggle); r.open=!r.open; const card=rt.closest(".req"); card.classList.toggle("open",r.open); rt.setAttribute("aria-expanded",r.open); card.querySelector(".req-body").innerHTML=r.open?reqBody(g,r,editableReq(g,r)):""; return;}
+  }
   const gt=t.closest("[data-goto]"); if(gt){const g=G(S.gid), r=R(g,+gt.dataset.goto); r.open=true; const el=document.querySelector('[data-rid="'+r.id+'"]'); if(el&&!el.classList.contains("open")){render();} flash(r.id); const f=document.querySelector('[data-rid="'+r.id+'"] .f.bad input, [data-rid="'+r.id+'"] .f.bad select'); if(f) setTimeout(()=>f.focus({preventScroll:true}),350); return;}
   const a=t.closest("[data-act]"); if(!a) return;
   const g=S.gid?G(S.gid):null, r=(g&&a.dataset.r)?R(g,+a.dataset.r):null;
@@ -862,7 +919,10 @@ document.addEventListener("click",e=>{
     case "copyGroup": copyGroup(g); break;
     case "send": trySend(g); break;
     case "sendChild": sendChild(g,r); break;
-    case "saveExit": toast("Черновик сохранён — группа во вкладке «Группы заявок»"); S.view="list"; render(); window.scrollTo(0,0); break;
+    case "saveExit":
+      if(visReqs(g).some(x=>x.saveErr)){ g.saveBlock=true; render(); window.scrollTo({top:0,behavior:"smooth"}); toast("Не удалось сохранить изменения — выход не выполнен"); break; }
+      toast("Черновик сохранён — группа во вкладке «Черновики»"); S.filter="DRAFT"; S.view="list"; render(); window.scrollTo(0,0); break;
+    case "retry": r.saveErr=false; r.saving=false; r.savedAt=Date.now(); r.changed=Date.now(); g.saveBlock=visReqs(g).some(x=>x.saveErr); if(g.copyErr&&!r.gone) g.copyErr=null; render(); toast("Сохранено"); break;
   }
 });
 document.addEventListener("keydown",e=>{
@@ -876,6 +936,7 @@ document.addEventListener("input",e=>{
   if(!t.dataset||!t.dataset.k) return;
   const g=G(S.gid), r=R(g,+t.dataset.r); if(!r) return;
   r[t.dataset.k]=t.value; r.changed=Date.now();
+  if(!r.saveErr){ r.saving=true; clearTimeout(r._sv); r._sv=setTimeout(()=>{ r.saving=false; r.savedAt=Date.now(); if(S.view==="group"&&S.gid===g.id) soft(g); },700); }
   if(r.errs.includes(t.dataset.k)&&!missing(r).includes(t.dataset.k)){ r.errs=r.errs.filter(k=>k!==t.dataset.k); const f=t.closest(".f"); if(f) f.classList.remove("bad"); const card=t.closest(".req"); if(card&&!r.errs.length) card.classList.remove("bad"); }
   if(g.unsaved){ g.unsaved=false; toast("Черновик сохранён — группа появилась во вкладке «Группы заявок»"); renderGroup(); const f=document.getElementById(t.id); if(f){f.focus(); if(f.setSelectionRange&&f.type!=="number"){f.setSelectionRange(f.value.length,f.value.length);}} return; }
   if(g.showErr&&!visReqs(g).some(x=>x.errs.length)) g.showErr=false;
@@ -884,12 +945,13 @@ document.addEventListener("input",e=>{
 
 /* ================= харнесс: роль и сценарии ================= */
 const HINTS={
-  list:"<b>Вкладка «Группы заявок» (§4.4):</b> одна строка на группу, раскрытие состава, фильтр по статусу группы, точный поиск по номеру группы или заявки. У каждого черновика — дата удаления; общего срока группы нет.",
-  create:"<b>Создание (§4.1):</b> пустая форма не создаёт группу — черновик и группа сохраняются после первого ввода. «+ Запрос на специалистов» — пустая форма, «Скопировать заявку» — копия этой заявки без вложений.",
+  list:"<b>Вкладка «Группы заявок» (§4.4):</b> одна строка на группу, раскрытие состава, фильтр по статусу группы, точный поиск по номеру группы или заявки. Черновики — только на вкладке «Черновики»; у каждого — прогресс заполнения и дата автоматического удаления, общего срока группы нет. Отправленная заявка открывает свою карточку.",
+  create:"<b>Создание (§4.1):</b> пустая форма не создаёт группу — черновик и группа сохраняются после первого ввода. «Добавить заявку» — пустая форма, «Скопировать заявку» — копия этой заявки без вложений. Индикатор сохранения и срок хранения — по T-66.",
   errors:"<b>Проверка (§4.2.2):</b> отправка всей группы блокируется, если хотя бы одна заявка невалидна; указаны заявка и поля, переход к полям. Ничего не переходит в «Новую».",
   confirm:"<b>Подтверждение (§4.2.3):</b> превью каждой заявки, сводка N специалистов в M регионах и явное подтверждение готовности всех заявок.",
   sent:"<b>Отправлена (§4.2.4, §5.1):</b> группа и все заявки — «Новая», номер группы YYMMDD_N и суффиксы _1, _2. Пока номер не присвоен — «Номер присваивается», это не ошибка.",
   copygroup:"<b>Копия группы (§4.5):</b> новое обращение-черновик той же организации с независимыми заявками; номера, история, вложения и связи не переносятся.",
+  faults:"<b>Сбои (§4.1.4, §4.1.6, §4.2.1; T-66 §4.6–4.7):</b> «Не сохранено» + «Повторить»; отправка и «Сохранить и выйти» блокируются с указанием заявки; копия не создаётся из несохранённой или недоступной заявки, частичных копий нет.",
   refill:"<b>Пополнение администратором (§4.3):</b> пока группа «Новая», админ добавляет черновик, видимый только ему, и отправляет его отдельно с показом изменения состава. Пока черновик есть — передача в работу недоступна."
 };
 function setRole(role){
@@ -913,6 +975,7 @@ function runScenario(k){
     case "confirm": fillG3(); openGroup(g3.id); trySend(g3); break;
     case "sent": fillG3(); openGroup(g3.id); doSend(g3); break;
     case "copygroup": openGroup(g1.id); copyGroup(g1); break;
+    case "faults": { const a=g3.reqs[0], b=g3.reqs[1]; a.saveErr=true; a.open=true; b.gone=true; openGroup(g3.id); copyReq(g3,b); break; }
     case "refill": { openGroup(g1.id); const r=addReq(g1,{priv:true,open:true,prof:"Бетонщик",region:"Москва",count:6,salary:"100 000 ₽",changed:NOW-40*6e4}); render(); flash(r.id); break; }
   }
   try{ history.replaceState(null,"","#"+k); }catch(_){}
