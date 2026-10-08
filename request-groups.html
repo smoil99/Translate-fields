@@ -98,6 +98,54 @@
   .who .nm{font-size:13px;font-weight:600;line-height:1.1}
   .who .rl{font-size:11px;color:var(--muted)}
 
+  /* ---------- шапка группы: залипает под навигацией + glass, как в «Переводе свободных полей» ---------- */
+  .lk-header{position:sticky; top:calc(var(--topnav-h,56px) + env(safe-area-inset-top,0px)); z-index:30;
+    background:transparent; box-shadow:none; transition:background .22s ease, box-shadow .22s ease}
+  body.scrolled .lk-header{background:var(--glass);
+    -webkit-backdrop-filter:blur(16px) saturate(1.4); backdrop-filter:blur(16px) saturate(1.4);
+    box-shadow:0 12px 34px -22px rgba(0,0,0,.8)}
+  .lk-header-in{max-width:1320px; margin:0 auto; padding:16px clamp(16px,4vw,40px) 0}
+  .lk-header .crumbs{margin:0 0 10px}
+  .crumbs a{color:var(--muted)}
+  .crumbs a:hover{color:#fff}
+  .lk-header .head{margin-top:0; flex-wrap:nowrap; align-items:center}
+  .lk-header h1{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .backc{appearance:none; flex:none; width:32px; height:32px; border-radius:50%; border:0; cursor:pointer; display:grid; place-items:center;
+    background:rgba(255,255,255,.10); color:#fff}
+  .backc:hover{background:rgba(255,255,255,.16)}
+  .backc svg{width:16px; height:16px}
+  .gsum{margin:8px 0 0; font-size:13px; color:var(--muted); display:flex; flex-wrap:wrap; align-items:baseline; column-gap:8px; row-gap:2px}
+  .gsum .bul{color:var(--dim)}
+  .gsum .ghost{color:var(--warn)}
+  /* табы заявок — DS «Filter tabs» (1152:2905): пилюли r32, Medium 16/20, неактивный — opacity .8 */
+  .rtabs{display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; padding:14px 0 14px; margin:0 -4px; padding-inline:4px}
+  .rtabs::-webkit-scrollbar{display:none}
+  .rtab{appearance:none; flex:none; display:inline-flex; align-items:center; gap:7px; cursor:pointer; white-space:nowrap;
+    padding:6px 12px; border-radius:var(--r-pill); border:1px solid transparent; background:transparent;
+    color:#fff; font-size:16px; line-height:20px; font-weight:500; opacity:.8; transition:opacity .12s, background .12s}
+  .rtab:hover{opacity:1; background:rgba(255,255,255,.06)}
+  .rtab[aria-selected="true"]{opacity:1; background:rgba(255,255,255,.10); border-color:#fff}
+  .rtab svg{width:14px; height:14px; flex:none}
+  .rtab .edot{width:8px; height:8px; border-radius:50%; background:var(--err); flex:none}
+  .rtab.add-tab{color:var(--accent); opacity:1}
+  .rtab.add-tab:hover{background:var(--accent-dim)}
+  #gPanel{scroll-margin-top:calc(var(--stack-h,200px) + 12px)}
+  #gPanel{margin-top:12px}
+  #gPanel .req-head{cursor:default}
+  #gPanel .req-head:hover{background:none}
+  .kid-row{display:flex; align-items:center; gap:6px}
+  @media (max-width:560px){
+    .lk-header .crumbs{display:none}
+    .lk-header .head{flex-wrap:wrap; row-gap:8px}
+    .lk-header h1{white-space:normal; flex:1 1 0; font-size:20px}
+    .lk-header .head .acts{order:2; margin-left:0}
+    .lk-header .head .acts .lbl{display:none}
+    .lk-header .head .acts .btn{width:32px; padding:0}
+    .lk-header #gRef,.lk-header #gStatus{order:3}
+    .rtab{font-size:15px}
+  }
+  .kid-row .kid{flex:1; min-width:0}
+
   /* ---------- контейнер ---------- */
   .wrap{max-width:1320px; margin:0 auto; padding:18px clamp(16px,4vw,40px) 80px}
 
@@ -438,6 +486,7 @@
 <!-- ============ НАВИГАЦИЯ ЛК (зависит от роли) ============ -->
 <nav class="topnav"><div class="topnav-in" id="topnavIn"></div></nav>
 
+<header class="lk-header" id="ghead" hidden></header>
 <main class="wrap" id="content"></main>
 <div id="modalRoot"></div>
 <div id="rmenu" class="rmenu" role="menu" aria-label="Действия с черновиком" hidden></div>
@@ -682,9 +731,10 @@ function groupRow(g){
       "<div>"+statusPill(g.status,g.ref==="…")+"</div>"+
     "</div>"+
     '<div class="grp-kids">'+kids.map(r=>
-      '<button class="kid'+(S.hl===r.id?" hit":"")+'" '+(r.status==="NEW"?'data-card="'+g.id+":"+r.id+'"':'data-open="'+g.id+'" data-req="'+r.id+'"')+">"+childRef(g,r)+
+      '<div class="kid-row"><button class="kid'+(S.hl===r.id?" hit":"")+'" '+(r.status==="NEW"?'data-card="'+g.id+":"+r.id+'"':'data-open="'+g.id+'" data-req="'+r.id+'"')+">"+childRef(g,r)+
       '<span class="t">'+esc(r.prof||"Заявка без профессии")+'</span><span class="m">'+reqMeta(r)+"</span>"+
-      '<span class="r">'+(r.priv?'<span class="lock">'+IC.lock+"только вам</span>":"")+(r.status==="DRAFT"?draftMeta(g,r,true):"")+statusPill(r.status)+"</span></button>"
+      '<span class="r">'+(r.priv?'<span class="lock">'+IC.lock+"только вам</span>":"")+(r.status==="DRAFT"?draftMeta(g,r,true):"")+statusPill(r.status)+"</span></button>"+
+      (editableReq(g,r)?'<button class="kebab" data-menu="'+r.id+'" data-g="'+g.id+'" data-ctx="list" aria-haspopup="menu" aria-expanded="false" aria-label="Действия с черновиком">'+IC.kebab+"</button>":"")+"</div>"
     ).join("")+
       '<button class="btn link open-g" data-open="'+g.id+'">Открыть группу '+IC.arrow+"</button>"+
     "</div></div>";
@@ -696,47 +746,83 @@ function editableReq(g,r){
   if(g.status==="DRAFT") return g.author===S.role;
   return S.role==="admin"&&r.priv;
 }
+/* активная заявка (таб): ровно одна открыта; по умолчанию — первая */
+function activeReq(g){ const vs=visReqs(g); const a=vs.find(r=>r.open)||vs[0]; vs.forEach(r=>r.open=(r===a)); return a; }
+function setActive(g,rid){ visReqs(g).forEach(r=>r.open=(r.id===rid)); }
 function renderGroup(){
   const g=G(S.gid); if(!g||(!canSee(g)&&!g.unsaved)){S.view="list";return render();}
   const admin=S.role==="admin";
-  const C=$("#content");
-  C.innerHTML=
-    '<button class="backpill" data-go="list">'+IC.back+"Группы заявок</button>"+
-    '<div class="head"><h1 id="gName">'+esc(groupName(g))+'</h1><span id="gRef">'+groupRef(g)+'</span><span id="gStatus">'+statusPill(g.status,g.ref==="…")+'</span>'+
-      '<div class="acts">'+(g.unsaved?"":'<button class="btn sm" data-act="copyGroup">'+IC.copy+"Дублировать группу</button>")+"</div></div>"+
-    '<div class="meta" id="gMeta"></div>'+
+  /* закреплённая шапка группы: крошки → заголовок с «назад» → сводка → табы заявок */
+  $("#ghead").innerHTML='<div class="lk-header-in">'+
+    '<p class="crumbs">'+(admin?"Администрирование":"Личный кабинет")+' / <a href="#" data-go="list">Группы заявок</a> / <span id="gCrumb"></span></p>'+
+    '<div class="head"><button class="backc" data-go="list" aria-label="Назад к группам заявок">'+IC.back+'</button>'+
+      '<h1 id="gName"></h1><span id="gRef"></span><span id="gStatus"></span>'+
+      '<div class="acts">'+(g.unsaved?"":'<button class="btn sm" data-act="copyGroup" aria-label="Дублировать группу">'+IC.copy+'<span class="lbl">Дублировать группу</span></button>')+"</div></div>"+
+    '<p class="gsum" id="gSum"></p>'+
+    '<div class="rtabs" role="tablist" aria-label="Заявки в группе" id="gTabs"></div>'+
+  "</div>";
+  $("#content").innerHTML=
     '<div class="stack" id="gNotices"></div>'+
-    '<div class="counters" id="gCounters"></div><div class="regline" id="gRegs"></div>'+
-    '<h2 class="sec">Заявки в группе</h2>'+
-    '<p class="sec-sub">Каждая заявка независима и заполняется обычной формой заявки. Общих полей и «Применить к…» нет.</p>'+
-    '<div class="reqs" id="gReqs">'+visReqs(g).map(r=>reqCard(g,r)).join("")+"</div>"+
-    addButton(g)+
+    '<div class="req open" id="gPanel" role="tabpanel"></div>'+
     '<div class="foot" id="gFoot"></div>';
+  renderPanel(g);
   soft(g);
 }
-function addButton(g){
-  if(g.status==="DRAFT"&&g.author===S.role) return '<button class="add" data-act="addBlank">'+IC.plus+"Добавить заявку</button>";
-  if(g.status==="NEW"&&S.role==="admin"&&g.ref!=="…") return '<button class="add" data-act="addBlank">'+IC.plus+"Добавить заявку <small>· черновик будет виден только вам</small></button>";
-  return "";
+/* табы заявок (DS «Filter tabs» 1152:2905) + «Добавить заявку» последним табом */
+function tabsHtml(g){
+  const vs=visReqs(g), a=activeReq(g);
+  const names=vs.map(r=>r.prof||"Новая заявка");
+  return vs.map((r,i)=>{
+    const l=names[i]+(names.filter(x=>x===names[i]).length>1?" · "+(i+1):"");
+    return '<button class="rtab" role="tab" id="tab-'+r.id+'" aria-controls="gPanel" aria-selected="'+(r===a)+'" tabindex="'+(r===a?0:-1)+'" data-tab="'+r.id+'">'+
+      (r.errs.length?'<span class="edot" title="Есть незаполненные поля"></span>':"")+(r.priv?IC.lock:"")+esc(l)+"</button>";
+  }).join("")+addTab(g);
+}
+function addTab(g){
+  const ok=(g.status==="DRAFT"&&g.author===S.role)||(g.status==="NEW"&&S.role==="admin"&&g.ref!=="…");
+  return ok?'<button class="rtab add-tab" data-act="addBlank"'+(g.status==="NEW"?' title="Черновик будет виден только вам"':"")+">"+IC.plus+"Добавить заявку</button>":"";
+}
+/* сводка группы мелким текстом, через буллеты; регионы — здесь же */
+function summaryHtml(g){
+  const admin=S.role==="admin", s=summ(pubReqs(g));
+  const specs=new Set(pubReqs(g).map(r=>r.prof).filter(Boolean)).size;
+  const it=[s.count+" "+plural(s.count,"заявка","заявки","заявок")];
+  it.push(s.n?s.n+" "+plural(s.n,"специалист","специалиста","специалистов")+(s.missC?' <i class="miss">(кол-во не указано в '+s.missC+")</i>":""):'<i class="miss">кол-во не указано</i>');
+  if(specs) it.push(specs+" "+plural(specs,"профессия","профессии","профессий"));
+  it.push(s.regs.length?esc(s.regs.join(", "))+(s.missR?' <i class="miss">(регион не указан в '+s.missR+")</i>":""):'<i class="miss">регион не указан</i>');
+  if(g.status==="NEW"&&g.sent) it.push("отправлена "+fmtD(g.sent));
+  if(g.copyOf) it.push("дубль группы "+esc(g.copyOf));
+  if(admin) it.push(esc(g.org));
+  const pd=g.status==="NEW"&&admin?privDrafts(g):[];
+  if(pd.length){const d=summ(pd); it.push('<span class="ghost">черновик админа: +'+d.count+" "+plural(d.count,"заявка","заявки","заявок")+(d.n?", +"+d.n+" спец.":"")+" — не опубликовано</span>");}
+  return it.join('<span class="bul" aria-hidden="true">•</span>');
+}
+function renderPanel(g){
+  const r=activeReq(g), P=$("#gPanel"); if(!r){P.innerHTML="";return;}
+  P.className="req open"+(r.errs.length?" bad":"")+(r.copy&&r.status==="DRAFT"?" copy":"")+(r.priv?" priv":"");
+  P.dataset.rid=r.id; P.setAttribute("aria-labelledby","tab-"+r.id);
+  P.innerHTML='<div class="req-head" data-head="'+r.id+'">'+reqHeadInner(g,r)+'</div><div class="req-body">'+reqBody(g,r,editableReq(g,r))+"</div>";
 }
 /* частичное обновление без перерисовки форм (не теряем фокус при вводе) */
 function soft(g){
-  const admin=S.role==="admin";
-  $("#gName").textContent=groupName(g);
+  const nm=groupName(g);
+  $("#gName").textContent=nm; $("#gCrumb").textContent=nm;
   $("#gRef").innerHTML=groupRef(g);
   $("#gStatus").innerHTML=statusPill(g.status,g.ref==="…");
-  const m=[];
-  if(admin) m.push("Организация: <b>"+esc(g.org)+"</b> · зафиксирована при первом сохранении");
-  if(g.status==="NEW"&&g.sent) m.push("Отправлена <b>"+fmtD(g.sent)+"</b>");
-  if(g.copyOf) m.push("Дубль группы <b>"+esc(g.copyOf)+"</b>");
-  $("#gMeta").innerHTML=m.map(x=>"<span>"+x+"</span>").join("");
+  $("#gSum").innerHTML=summaryHtml(g);
+  $("#gTabs").innerHTML=tabsHtml(g);
   $("#gNotices").innerHTML=notices(g);
-  $("#gCounters").innerHTML=counters(g);
-  const s=summ(pubReqs(g));
-  $("#gRegs").innerHTML=s.regs.length?"Регионы: <b>"+esc(s.regs.join(", "))+"</b>":"";
-  visReqs(g).forEach(r=>{const h=document.querySelector('[data-head="'+r.id+'"]');if(h)h.innerHTML=reqHeadInner(g,r);});
+  const r=activeReq(g), h=document.querySelector('[data-head="'+(r&&r.id)+'"]'); if(h) h.innerHTML=reqHeadInner(g,r);
+  if(r) $("#gPanel").classList.toggle("bad",r.errs.length>0);
   $("#gFoot").innerHTML=footer(g);
   $("#gFoot").classList.toggle("sticky",g.status==="DRAFT"&&g.author===S.role);
+  setStackH();
+}
+/* переключение таба: панель перерисовывается, экран — к началу формы, если ушли ниже */
+function switchTab(g,rid,focusTab){
+  setActive(g,rid); renderPanel(g); $("#gTabs").innerHTML=tabsHtml(g);
+  const P=$("#gPanel"); if(P.getBoundingClientRect().top<stackH()) P.scrollIntoView({block:"start"});
+  if(focusTab){const t=document.getElementById("tab-"+rid); if(t) t.focus();}
 }
 function notices(g){
   const admin=S.role==="admin"; const out=[];
@@ -756,25 +842,6 @@ function notices(g){
   return out.join("");
 }
 function alertBox(type,icon,title,sub){return '<div class="alert '+type+'">'+icon+'<div class="body">'+title+(sub?"<small>"+sub+"</small>":"")+"</div></div>";}
-function counters(g){
-  const admin=S.role==="admin";
-  const s=summ(pubReqs(g));
-  const specs=new Set(pubReqs(g).map(r=>r.prof).filter(Boolean)).size;
-  let h=
-    '<div class="chip"><b>'+s.count+"</b><span>"+plural(s.count,"заявка","заявки","заявок")+"</span></div>"+
-    '<div class="chip"><b>'+(s.n||!s.missC?s.n:"—")+"</b><span>"+plural(s.n,"специалист","специалиста","специалистов")+"</span></div>"+
-    '<div class="chip"><b>'+(s.regs.length||!s.missR?s.regs.length:"—")+"</b><span>"+plural(s.regs.length,"регион","региона","регионов")+"</span></div>"+
-    '<div class="chip"><b>'+(specs||!pubReqs(g).some(r=>!r.prof)?specs:"—")+"</b><span>"+plural(specs,"профессия","профессии","профессий")+"</span></div>";
-  if(g.status==="DRAFT"&&(s.missC||s.missR)){
-    const p=[]; if(s.missC)p.push("количество — в "+s.missC); if(s.missR)p.push("регион — в "+s.missR);
-    h+='<div class="chip warn"><span>Не заполнено: '+p.join(", ")+"</span></div>";
-  }
-  if(g.status==="NEW"&&admin){
-    const pd=privDrafts(g); if(pd.length){const d=summ(pd);
-      h+='<div class="chip ghost"><span>Черновик админа: +'+d.count+" "+plural(d.count,"заявка","заявки","заявок")+(d.n?" · +"+d.n+" спец.":"")+" · не опубликовано</span></div>";}
-  }
-  return h;
-}
 function footer(g){
   const admin=S.role==="admin";
   if(g.status==="DRAFT"&&g.author===S.role){
@@ -792,17 +859,10 @@ function footer(g){
 
 /* ---------- карточка вложенной заявки ---------- */
 function reqHeadInner(g,r){
-  return '<span class="chev">'+IC.chev+"</span>"+childRef(g,r)+
+  return childRef(g,r)+
     '<span class="req-title">'+esc(r.prof||"Новая заявка")+'</span><span class="req-meta">'+reqMeta(r)+"</span>"+
     '<span class="req-right">'+(r.priv?'<span class="lock">'+IC.lock+"только вам</span>":"")+draftMeta(g,r)+statusPill(r.status)+
     (editableReq(g,r)&&!g.unsaved?'<button class="kebab" data-menu="'+r.id+'" aria-haspopup="menu" aria-expanded="false" aria-label="Действия с черновиком">'+IC.kebab+"</button>":"")+"</span>";
-}
-function reqCard(g,r){
-  const ed=editableReq(g,r);
-  const cls="req"+(r.open?" open":"")+(r.errs.length?" bad":"")+(r.copy&&r.status==="DRAFT"?" copy":"")+(r.priv?" priv":"");
-  return '<div class="'+cls+'" data-rid="'+r.id+'">'+
-    '<div class="req-head" role="button" tabindex="0" aria-expanded="'+r.open+'" data-head="'+r.id+'" data-rtoggle="'+r.id+'">'+reqHeadInner(g,r)+"</div>"+
-    '<div class="req-body">'+(r.open?reqBody(g,r,ed):"")+"</div></div>";
 }
 function fld(r,f){
   const k=f.k, id="f-"+r.id+"-"+k, bad=r.errs.includes(k);
@@ -898,15 +958,19 @@ function prevCard(g,r,label){
 }
 
 /* ================= действия ================= */
-function render(){ renderNav(); S.view==="group"?renderGroup():S.view==="req"?renderReqCard():renderList(); }
+function render(){
+  renderNav();
+  const gh=$("#ghead"); gh.hidden=S.view!=="group"; if(gh.hidden) gh.innerHTML="";
+  S.view==="group"?renderGroup():S.view==="req"?renderReqCard():renderList();
+}
 function openGroup(id,reqId){
   S.view="group"; S.gid=id;
   const g=G(id);
-  if(reqId){ g.reqs.forEach(r=>{if(r.id===reqId)r.open=true;}); }
+  if(reqId) setActive(g,reqId);
   render(); window.scrollTo(0,0);
   if(reqId) flash(reqId);
 }
-function flash(rid){ const el=document.querySelector('[data-rid="'+rid+'"]'); if(!el)return; el.scrollIntoView({block:"center",behavior:"smooth"}); el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); }
+function flash(rid){ const el=document.querySelector('[data-rid="'+rid+'"]'); if(!el)return; if(el.getBoundingClientRect().top<stackH()||el.getBoundingClientRect().top>innerHeight*.6) el.scrollIntoView({block:"start",behavior:"smooth"}); el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); }
 
 function createGroup(org){
   if(S.role==="admin"&&!org){
@@ -919,7 +983,7 @@ function createGroup(org){
   addReq(g,{open:true});
   S.groups.unshift(g);
   openGroup(g.id);
-  const f=document.querySelector("#gReqs select, #gReqs input"); if(f) f.focus({preventScroll:true});
+  const f=document.querySelector("#gPanel select, #gPanel input"); if(f) f.focus({preventScroll:true});
 }
 function addBlank(g){
   g.reqs.forEach(r=>r.open=false);
@@ -935,7 +999,7 @@ function copyReq(g,src){
   const r=addReq(g,{open:true,copy:true,priv:g.status==="NEW",
     ...pick(src),
     created:Date.now(),changed:Date.now()});
-  src.open=false;
+  setActive(g,r.id);
   render(); flash(r.id);
   toast("Создан независимый дубль заявки");
 }
@@ -962,7 +1026,7 @@ function copyGroup(src){
   toast("Создано новое обращение — дубль группы");
 }
 function validate(g){
-  let bad=0; visReqs(g).forEach(r=>{r.errs=missing(r); if(r.errs.length){bad++; r.open=true;}});
+  let bad=0; visReqs(g).forEach(r=>{r.errs=missing(r); r.open=false; if(r.errs.length&&!bad++) r.open=true;});
   return bad;
 }
 function trySend(g){
@@ -1011,8 +1075,9 @@ function openMenu(btn){
   const rid=btn.dataset.menu, m=$("#rmenu");
   if(menuBtn===btn){ closeMenu(); return; }
   closeMenu();
-  m.innerHTML=
-    '<button role="menuitem" data-act="copyReq" data-r="'+rid+'">'+IC.copy+'<span>Дублировать заявку<small>Независимый дубль этой заявки в той же группе, без вложений</small></span></button>';
+  m.innerHTML=btn.dataset.ctx==="list"
+    ? '<button role="menuitem" class="del" data-act="delReq" data-g="'+btn.dataset.g+'" data-r="'+rid+'">'+IC.trash+'<span>Удалить черновик<small>С подтверждением; остальные заявки сохранятся</small></span></button>'
+    : '<button role="menuitem" data-act="copyReq" data-r="'+rid+'">'+IC.copy+'<span>Дублировать заявку<small>Независимый дубль этой заявки в той же группе, без вложений</small></span></button>';
   m.hidden=false; menuBtn=btn; btn.setAttribute("aria-expanded","true");
   const rc=btn.getBoundingClientRect(), mr=m.getBoundingClientRect();
   let top=rc.bottom+6, left=rc.right-mr.width;
@@ -1037,17 +1102,16 @@ document.addEventListener("click",e=>{
   const tg=t.closest("[data-toggle]"); if(tg){const g=G(+tg.dataset.toggle); g.open=!g.open; renderList(); return;}
   const op=t.closest("[data-open]"); if(op){openGroup(+op.dataset.open, op.dataset.req?+op.dataset.req:null); return;}
   const fl=t.closest("[data-filter]"); if(fl){S.filter=fl.dataset.filter; renderList(); return;}
-  if(t.closest("[data-act]")&&t.closest("[data-rtoggle]")){/* «Повторить» в шапке заявки — не сворачивать */} else {
-  const rt=t.closest("[data-rtoggle]"); if(rt){const g=G(S.gid), r=R(g,+rt.dataset.rtoggle); r.open=!r.open; const card=rt.closest(".req"); card.classList.toggle("open",r.open); rt.setAttribute("aria-expanded",r.open); card.querySelector(".req-body").innerHTML=r.open?reqBody(g,r,editableReq(g,r)):""; return;}
-  }
-  const gt=t.closest("[data-goto]"); if(gt){const g=G(S.gid), r=R(g,+gt.dataset.goto); r.open=true; const el=document.querySelector('[data-rid="'+r.id+'"]'); if(el&&!el.classList.contains("open")){render();} flash(r.id); const f=document.querySelector('[data-rid="'+r.id+'"] .f.bad input, [data-rid="'+r.id+'"] .f.bad select, [data-rid="'+r.id+'"] .f.bad textarea, [data-rid="'+r.id+'"] .f.bad .chipb'); if(f) setTimeout(()=>f.focus({preventScroll:true}),350); return;}
+  const tb=t.closest("[data-tab]"); if(tb){switchTab(G(S.gid),+tb.dataset.tab); return;}
+
+  const gt=t.closest("[data-goto]"); if(gt){const g=G(S.gid); switchTab(g,+gt.dataset.goto); const f=document.querySelector('#gPanel .f.bad input, #gPanel .f.bad select, #gPanel .f.bad textarea, #gPanel .f.bad .chipb'); if(f){f.scrollIntoView({block:"center"}); f.focus({preventScroll:true});} return;}
   const ch=t.closest("[data-chip]"); if(ch){
     const g=G(S.gid), r=R(g,+ch.dataset.r), k=ch.dataset.chip, v=ch.dataset.v;
     ch.parentNode.querySelectorAll("[data-chip]").forEach(b=>b.setAttribute("aria-checked",b===ch));
     fieldChanged(g,r,k,v,ch); return;
   }
   const a=t.closest("[data-act]"); if(!a) return;
-  const g=S.gid?G(S.gid):null, r=(g&&a.dataset.r)?R(g,+a.dataset.r):null;
+  const g=a.dataset.g?G(+a.dataset.g):S.gid?G(S.gid):null, r=(g&&a.dataset.r)?R(g,+a.dataset.r):null;
   switch(a.dataset.act){
     case "create": createGroup(); break;
     case "addBlank": addBlank(g); break;
@@ -1066,6 +1130,10 @@ document.addEventListener("keydown",e=>{
   if(e.key==="Escape"&&!$("#rmenu").hidden){closeMenu();return;}
   if(e.key==="Escape"&&$("#modalRoot").innerHTML){closeModal();return;}
   if((e.key==="Enter"||e.key===" ")&&e.target.matches('[role="button"]')){e.preventDefault(); e.target.click();}
+  if((e.key==="ArrowRight"||e.key==="ArrowLeft")&&e.target.matches('[role="tab"]')){
+    const tabs=[...document.querySelectorAll('#gTabs [role="tab"]')], i=tabs.indexOf(e.target);
+    const n=tabs[(i+(e.key==="ArrowRight"?1:tabs.length-1))%tabs.length]; e.preventDefault(); switchTab(G(S.gid),+n.dataset.tab,true);
+  }
 });
 /* ввод в форму: модель + частичное обновление, без потери фокуса */
 document.addEventListener("input",e=>{
@@ -1089,8 +1157,8 @@ function fieldChanged(g,r,k,v,t){
 
 /* ================= харнесс: роль и сценарии ================= */
 const HINTS={
-  list:"<b>Вкладка «Группы заявок» (§4.4):</b> одна строка на группу, раскрытие состава, фильтр по статусу группы, поиск по номеру группы или заявки. Черновики — только на вкладке «Черновики»; у каждого — прогресс заполнения и дата автоматического удаления, общего срока группы нет. Отправленная заявка открывает свою карточку.",
-  create:"<b>Создание (§4.1):</b> пустая форма не создаёт группу — черновик и группа сохраняются после первого ввода. «Добавить заявку» — пустая форма; «Дублировать заявку» — в меню «⋮» карточки черновика (независимый дубль этой заявки без вложений); «Удалить черновик» — слева в футере заявки. Кнопка «Добавить заявку» доступна сразу, ещё до заполнения первой. Индикатор сохранения и срок хранения — по T-66.",
+  list:"<b>Вкладка «Группы заявок» (§4.4):</b> одна строка на группу, раскрытие состава (у черновиков — «⋮» с удалением), фильтр по статусу группы, поиск по номеру группы или заявки. Черновики — только на вкладке «Черновики»; у каждого — прогресс заполнения и дата автоматического удаления, общего срока группы нет. Отправленная заявка открывает свою карточку.",
+  create:"<b>Создание (§4.1):</b> пустая форма не создаёт группу — черновик и группа сохраняются после первого ввода. Заявки группы — табами в закреплённой шапке; «Добавить заявку» — последний таб, пустая форма; «Дублировать заявку» — в меню «⋮» карточки черновика (независимый дубль этой заявки без вложений); «Удалить черновик» — слева в футере заявки. Кнопка «Добавить заявку» доступна сразу, ещё до заполнения первой. Индикатор сохранения и срок хранения — по T-66.",
   errors:"<b>Проверка (§4.2.2):</b> отправка всей группы блокируется, если хотя бы одна заявка невалидна; указаны заявка и поля, переход к полям. Ничего не переходит в «Новую».",
   confirm:"<b>Подтверждение (§4.2.3):</b> превью каждой заявки, сводка N специалистов в M регионах и явное подтверждение готовности всех заявок.",
   sent:"<b>Отправлена (§4.2.4, §5.1):</b> группа и все заявки — «Новая», номер группы YYMMDD_N и суффиксы _1, _2. Пока номер не присвоен — «Номер присваивается», это не ошибка.",
@@ -1120,7 +1188,7 @@ function runScenario(k){
     case "sent": fillG3(); openGroup(g3.id); doSend(g3); break;
     case "copygroup": openGroup(g1.id); copyGroup(g1); break;
     case "faults": { const a=g3.reqs[0], b=g3.reqs[1]; a.saveErr=true; a.open=true; b.gone=true; openGroup(g3.id); copyReq(g3,b); break; }
-    case "refill": { openGroup(g1.id); const r=addReq(g1,Object.assign({},FULL,{priv:true,open:true,prof:"Бетонщик",region:"Москва",count:6,salary:"100 000",changed:NOW-40*6e4})); render(); flash(r.id); break; }
+    case "refill": { openGroup(g1.id); const r=addReq(g1,Object.assign({},FULL,{priv:true,open:true,prof:"Бетонщик",region:"Москва",count:6,salary:"100 000",changed:NOW-40*6e4})); setActive(g1,r.id); render(); flash(r.id); break; }
   }
   try{ history.replaceState(null,"","#"+k); }catch(_){}
 }
@@ -1143,7 +1211,11 @@ document.querySelectorAll("#scenSeg button").forEach(b=>b.addEventListener("clic
 })();
 
 /* ================= glass-шапка при скролле ================= */
-window.addEventListener("scroll",()=>document.body.classList.toggle("scrolled",window.scrollY>4),{passive:true});
+const stackH=()=>$(".topnav").offsetHeight+($("#ghead").hidden?0:$("#ghead").offsetHeight);
+function setStackH(){ document.documentElement.style.setProperty("--topnav-h",$(".topnav").offsetHeight+"px"); document.documentElement.style.setProperty("--stack-h",stackH()+"px"); }
+function onScroll(){ document.body.classList.toggle("scrolled",window.scrollY>$(".harness").offsetHeight-2); }
+window.addEventListener("scroll",onScroll,{passive:true});
+window.addEventListener("resize",()=>{setStackH(); onScroll();});
 
 /* старт: сценарий из #якоря (например, request-groups.html#confirm) */
 const start=(location.hash||"").slice(1);
