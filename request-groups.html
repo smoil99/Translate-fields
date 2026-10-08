@@ -677,7 +677,7 @@ function groupRow(g){
   return '<div class="grp'+(g.open?" open":"")+'">'+
     '<div class="grp-head" role="button" tabindex="0" aria-expanded="'+g.open+'" data-toggle="'+g.id+'">'+
       '<span class="chev">'+IC.chev+"</span>"+
-      '<div><div class="grp-title"><b>'+esc(groupName(g))+"</b>"+groupRef(g)+(g.copyOf?'<span class="tagc">копия</span>':"")+'</div><div class="grp-sub">'+sub+"</div></div>"+
+      '<div><div class="grp-title"><b>'+esc(groupName(g))+"</b>"+groupRef(g)+(g.copyOf?'<span class="tagc">дубль</span>':"")+'</div><div class="grp-sub">'+sub+"</div></div>"+
       '<div class="grp-vol"><div>'+vol+'</div><div class="regs">'+(regs||regsMiss?regs+regsMiss:"—")+"</div></div>"+
       "<div>"+statusPill(g.status,g.ref==="…")+"</div>"+
     "</div>"+
@@ -728,7 +728,7 @@ function soft(g){
   const m=[];
   if(admin) m.push("Организация: <b>"+esc(g.org)+"</b> · зафиксирована при первом сохранении");
   if(g.status==="NEW"&&g.sent) m.push("Отправлена <b>"+fmtD(g.sent)+"</b>");
-  if(g.copyOf) m.push("Копия группы <b>"+esc(g.copyOf)+"</b>");
+  if(g.copyOf) m.push("Дубль группы <b>"+esc(g.copyOf)+"</b>");
   $("#gMeta").innerHTML=m.map(x=>"<span>"+x+"</span>").join("");
   $("#gNotices").innerHTML=notices(g);
   $("#gCounters").innerHTML=counters(g);
@@ -741,7 +741,7 @@ function soft(g){
 function notices(g){
   const admin=S.role==="admin"; const out=[];
   if(g.unsaved) out.push(alertBox("info",IC.info,"В одном обращении можно указать несколько запросов на специалистов.","Начните заполнять первую заявку — черновик и группа сохранятся автоматически после первого ввода. Пустая форма группу не создаёт."));
-  if(g.copyOf&&g.status==="DRAFT") out.push(alertBox("info",IC.copy,"Независимая копия группы. Проверьте все заявки перед отправкой. Вложения и результаты работы не скопированы.","Оригинал и копия не синхронизируются. Номера присвоятся при отправке новой группы."));
+  if(g.copyOf&&g.status==="DRAFT") out.push(alertBox("info",IC.copy,"Независимый дубль группы. Проверьте все заявки перед отправкой. Вложения и результаты работы не перенесены.","Оригинал и дубль не синхронизируются. Номера присвоятся при отправке новой группы."));
   if(g.showErr){
     const bad=visReqs(g).filter(r=>r.errs.length);
     if(bad.length) out.push('<div class="alert err">'+IC.err+'<div class="body">Отправка невозможна: '+bad.length+" "+plural(bad.length,"заявка заполнена","заявки заполнены","заявок заполнены")+" не полностью. Статусы группы и заявок не изменились."+
@@ -750,7 +750,7 @@ function notices(g){
   if(g.saveBlock){ const u=visReqs(g).filter(r=>r.saveErr);
     if(u.length) out.push('<div class="alert err">'+IC.err+'<div class="body">Не удалось сохранить '+(u.length>1?"заявки":"заявку")+" — отправка группы недоступна, пока изменения не сохранены.<ul>"+
       u.map(r=>"<li><span>Черновик · "+r.local+" · "+esc(r.prof||"без профессии")+' — «Не сохранено»</span><button class="btn link" data-act="retry" data-r="'+r.id+'">Повторить сохранение</button></li>').join("")+"</ul></div></div>"); }
-  if(g.copyErr) out.push(alertBox("err",IC.err,"Копия не создана.",g.copyErr));
+  if(g.copyErr) out.push(alertBox("err",IC.err,"Дубль не создан.",g.copyErr));
   if(g.status==="NEW"&&g.ref==="…") out.push(alertBox("info",IC.info,"Группа отправлена. Номер присваивается.","Отправка выполнена успешно — повторять её не нужно. Номер появится автоматически."));
   if(g.status==="NEW"&&admin&&privDrafts(g).length) out.push(alertBox("warn",IC.lock,"Черновик администратора виден только вам и не входит в опубликованную сводку.","Отправьте его отдельно — тогда клиент увидит заявку и обновлённый состав. Группа и другие заявки повторно не отправляются."));
   return out.join("");
@@ -840,7 +840,7 @@ function kv(k,v){return '<div class="kv"><span class="k">'+k+'</span><span class
 function reqBody(g,r,ed){
   const admin=S.role==="admin";
   let h="";
-  if(r.copy&&r.status==="DRAFT") h+=alertBox("warn",IC.warn,"Независимая копия. Проверьте все условия перед отправкой. Вложения не скопированы.","");
+  if(r.copy&&r.status==="DRAFT") h+=alertBox("warn",IC.warn,"Независимый дубль. Проверьте все условия перед отправкой. Вложения не перенесены.","");
   if(ed){
     h+=formHtml(r);
   } else {
@@ -930,14 +930,14 @@ function addBlank(g){
 }
 function copyReq(g,src){
   g.copyErr=null;
-  if(src.gone){ g.copyErr="Заявка «"+esc(src.prof||"без профессии")+"» больше недоступна — удалена в другой вкладке или нет прав на просмотр. Обновите страницу; частичная копия не сохраняется."; render(); window.scrollTo({top:0,behavior:"smooth"}); return; }
-  if(src.saveErr){ g.copyErr="В заявке «"+esc(src.prof||"без профессии")+"» есть несохранённые изменения. Копия создаётся из сохранённого состояния — сначала повторите сохранение."; render(); window.scrollTo({top:0,behavior:"smooth"}); return; }
+  if(src.gone){ g.copyErr="Заявка «"+esc(src.prof||"без профессии")+"» больше недоступна — удалена в другой вкладке или нет прав на просмотр. Обновите страницу; частичный дубль не сохраняется."; render(); window.scrollTo({top:0,behavior:"smooth"}); return; }
+  if(src.saveErr){ g.copyErr="В заявке «"+esc(src.prof||"без профессии")+"» есть несохранённые изменения. Дубль создаётся из сохранённого состояния — сначала повторите сохранение."; render(); window.scrollTo({top:0,behavior:"smooth"}); return; }
   const r=addReq(g,{open:true,copy:true,priv:g.status==="NEW",
     ...pick(src),
     created:Date.now(),changed:Date.now()});
   src.open=false;
   render(); flash(r.id);
-  toast("Создана независимая копия заявки");
+  toast("Создан независимый дубль заявки");
 }
 function delReq(g,r){
   const last=g.status==="DRAFT"&&visReqs(g).length===1;
@@ -959,7 +959,7 @@ function copyGroup(src){
   from.forEach(r=>addReq(g,pick(r)));
   S.groups.unshift(g);
   openGroup(g.id);
-  toast("Создано новое обращение — копия группы");
+  toast("Создано новое обращение — дубль группы");
 }
 function validate(g){
   let bad=0; visReqs(g).forEach(r=>{r.errs=missing(r); if(r.errs.length){bad++; r.open=true;}});
@@ -1012,7 +1012,7 @@ function openMenu(btn){
   if(menuBtn===btn){ closeMenu(); return; }
   closeMenu();
   m.innerHTML=
-    '<button role="menuitem" data-act="copyReq" data-r="'+rid+'">'+IC.copy+'<span>Дублировать заявку<small>Независимая копия этой заявки в той же группе, без вложений</small></span></button>';
+    '<button role="menuitem" data-act="copyReq" data-r="'+rid+'">'+IC.copy+'<span>Дублировать заявку<small>Независимый дубль этой заявки в той же группе, без вложений</small></span></button>';
   m.hidden=false; menuBtn=btn; btn.setAttribute("aria-expanded","true");
   const rc=btn.getBoundingClientRect(), mr=m.getBoundingClientRect();
   let top=rc.bottom+6, left=rc.right-mr.width;
@@ -1090,12 +1090,12 @@ function fieldChanged(g,r,k,v,t){
 /* ================= харнесс: роль и сценарии ================= */
 const HINTS={
   list:"<b>Вкладка «Группы заявок» (§4.4):</b> одна строка на группу, раскрытие состава, фильтр по статусу группы, поиск по номеру группы или заявки. Черновики — только на вкладке «Черновики»; у каждого — прогресс заполнения и дата автоматического удаления, общего срока группы нет. Отправленная заявка открывает свою карточку.",
-  create:"<b>Создание (§4.1):</b> пустая форма не создаёт группу — черновик и группа сохраняются после первого ввода. «Добавить заявку» — пустая форма; «Дублировать заявку» — в меню «⋮» карточки черновика (независимая копия этой заявки без вложений); «Удалить черновик» — слева в футере заявки. Кнопка «Добавить заявку» доступна сразу, ещё до заполнения первой. Индикатор сохранения и срок хранения — по T-66.",
+  create:"<b>Создание (§4.1):</b> пустая форма не создаёт группу — черновик и группа сохраняются после первого ввода. «Добавить заявку» — пустая форма; «Дублировать заявку» — в меню «⋮» карточки черновика (независимый дубль этой заявки без вложений); «Удалить черновик» — слева в футере заявки. Кнопка «Добавить заявку» доступна сразу, ещё до заполнения первой. Индикатор сохранения и срок хранения — по T-66.",
   errors:"<b>Проверка (§4.2.2):</b> отправка всей группы блокируется, если хотя бы одна заявка невалидна; указаны заявка и поля, переход к полям. Ничего не переходит в «Новую».",
   confirm:"<b>Подтверждение (§4.2.3):</b> превью каждой заявки, сводка N специалистов в M регионах и явное подтверждение готовности всех заявок.",
   sent:"<b>Отправлена (§4.2.4, §5.1):</b> группа и все заявки — «Новая», номер группы YYMMDD_N и суффиксы _1, _2. Пока номер не присвоен — «Номер присваивается», это не ошибка.",
   copygroup:"<b>Дублирование группы (§4.5):</b> новое обращение-черновик той же организации с независимыми заявками; номера, история, вложения и связи не переносятся.",
-  faults:"<b>Сбои (§4.1.4, §4.1.6, §4.2.1; T-66 §4.6–4.7):</b> «Не сохранено» + «Повторить»; отправка и «Сохранить и выйти» блокируются с указанием заявки; копия не создаётся из несохранённой или недоступной заявки, частичных копий нет.",
+  faults:"<b>Сбои (§4.1.4, §4.1.6, §4.2.1; T-66 §4.6–4.7):</b> «Не сохранено» + «Повторить»; отправка и «Сохранить и выйти» блокируются с указанием заявки; дубль не создаётся из несохранённой или недоступной заявки, частичных дублей нет.",
   refill:"<b>Пополнение администратором (§4.3):</b> пока группа «Новая», админ добавляет черновик, видимый только ему, и отправляет его отдельно с показом изменения состава. Пока черновик есть — передача в работу недоступна."
 };
 function setRole(role){
