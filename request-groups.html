@@ -265,6 +265,18 @@
   .dmeta .sv.err{color:var(--err); font-weight:500}
   .dmeta .btn.link{font-size:12px; padding:0 2px; color:var(--accent)}
   .req.bad .miss{color:var(--err)}
+  .kebab{appearance:none; border:0; background:transparent; color:var(--muted); width:32px; height:32px; border-radius:8px;
+    display:grid; place-items:center; cursor:pointer; flex:none}
+  .kebab:hover,.kebab[aria-expanded="true"]{background:rgba(255,255,255,.10); color:#fff}
+  .kebab svg{width:18px;height:18px}
+  .rmenu{position:fixed; z-index:70; width:260px; background:var(--panel-solid); border:1px solid var(--line-strong); border-radius:12px;
+    box-shadow:0 20px 50px -14px rgba(0,0,0,.7); padding:6px; display:flex; flex-direction:column; gap:2px; animation:fade .12s ease-out}
+  .rmenu button{appearance:none; border:0; background:none; color:#fff; font-size:14px; font-weight:500; text-align:left; cursor:pointer;
+    padding:10px 12px; border-radius:8px; display:flex; gap:10px; align-items:flex-start}
+  .rmenu button svg{width:16px; height:16px; flex:none; margin-top:2px; color:var(--muted)}
+  .rmenu button:hover,.rmenu button:focus-visible{background:rgba(255,255,255,.08); outline:none}
+  .rmenu button small{display:block; color:var(--muted); font-size:12px; font-weight:400; margin-top:2px}
+  .rmenu .del,.rmenu .del svg{color:#ff9aa3}
   .req-body{display:none; padding:4px 16px 16px; border-top:1px solid var(--line)}
   .req.open .req-body{display:block}
   .req-body > .alert{margin-top:14px}
@@ -405,6 +417,7 @@
 
 <main class="wrap" id="content"></main>
 <div id="modalRoot"></div>
+<div id="rmenu" class="rmenu" role="menu" aria-label="Действия с черновиком" hidden></div>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -434,6 +447,7 @@ const IC={
   err:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/></svg>',
   lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
   x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  kebab:'<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>',
   help:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17v.5"/></svg>',
   home:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>',
   doc:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>'
@@ -700,7 +714,8 @@ function footer(g){
 function reqHeadInner(g,r){
   return '<span class="chev">'+IC.chev+"</span>"+childRef(g,r)+
     '<span class="req-title">'+esc(r.prof||"Новая заявка")+'</span><span class="req-meta">'+reqMeta(r)+"</span>"+
-    '<span class="req-right">'+(r.priv?'<span class="lock">'+IC.lock+"только вам</span>":"")+draftMeta(g,r)+statusPill(r.status)+"</span>";
+    '<span class="req-right">'+(r.priv?'<span class="lock">'+IC.lock+"только вам</span>":"")+draftMeta(g,r)+statusPill(r.status)+
+    (editableReq(g,r)&&!g.unsaved?'<button class="kebab" data-menu="'+r.id+'" aria-haspopup="menu" aria-expanded="false" aria-label="Действия с черновиком">'+IC.kebab+"</button>":"")+"</span>";
 }
 function reqCard(g,r){
   const ed=editableReq(g,r);
@@ -742,11 +757,10 @@ function reqBody(g,r,ed){
   }
   const canCopy=!g.unsaved&&((g.status==="DRAFT"&&g.author===S.role)||(g.status==="NEW"&&admin&&g.ref!=="…"));
   h+='<div class="req-acts">';
-  if(ed) h+='<span class="note">'+(g.unsaved?"Черновик появится после первого ввода — тогда станут доступны копирование и удаление.":g.status==="NEW"?"Черновик администратора: клиент увидит заявку только после её отдельной отправки.":"Сохраняется автоматически. Копия создаётся из сохранённого состояния этой заявки, без вложений.")+"</span>";
+  if(ed) h+='<span class="note">'+(g.unsaved?"Черновик появится после первого ввода — тогда станут доступны копирование и удаление.":g.status==="NEW"?"Черновик администратора: клиент увидит заявку только после её отдельной отправки.":"Сохраняется автоматически. Скопировать или удалить черновик — в меню «⋮» карточки.")+"</span>";
   else h+='<span class="note">'+(admin?"Отправленная заявка. Правка опубликованных данных — по смежному BRD.":"Отправленную заявку клиент не меняет — правки вносит менеджер РРУ.")+"</span>";
   if(r.status==="NEW"&&r.n&&g.ref!=="…") h+='<button class="btn link" data-card="'+g.id+":"+r.id+'">Открыть карточку заявки '+IC.arrow+"</button>";
-  if(canCopy) h+='<button class="btn sm" data-act="copyReq" data-r="'+r.id+'">'+IC.copy+"Скопировать заявку</button>";
-  if(ed&&!g.unsaved) h+='<button class="btn link del" data-act="delReq" data-r="'+r.id+'">'+IC.trash+"Удалить черновик</button>";
+  if(canCopy&&!ed) h+='<button class="btn sm" data-act="copyReq" data-r="'+r.id+'">'+IC.copy+"Скопировать заявку</button>";
   if(ed&&g.status==="NEW") h+='<button class="btn sm primary" data-act="sendChild" data-r="'+r.id+'">'+IC.send+"Отправить заявку</button>";
   h+="</div>";
   return h;
@@ -897,9 +911,35 @@ function sendChild(g,r){
     }}]});
 }
 
+/* ================= меню «⋮» карточки черновика ================= */
+let menuBtn=null;
+function closeMenu(){ const m=$("#rmenu"); if(m.hidden) return; m.hidden=true; m.innerHTML=""; if(menuBtn){menuBtn.setAttribute("aria-expanded","false"); menuBtn=null;} }
+function openMenu(btn){
+  const rid=btn.dataset.menu, m=$("#rmenu");
+  if(menuBtn===btn){ closeMenu(); return; }
+  closeMenu();
+  m.innerHTML=
+    '<button role="menuitem" data-act="copyReq" data-r="'+rid+'">'+IC.copy+'<span>Скопировать заявку<small>Независимая копия этой заявки в той же группе, без вложений</small></span></button>'+
+    '<button role="menuitem" class="del" data-act="delReq" data-r="'+rid+'">'+IC.trash+'<span>Удалить черновик<small>С подтверждением; остальные заявки сохранятся</small></span></button>';
+  m.hidden=false; menuBtn=btn; btn.setAttribute("aria-expanded","true");
+  const rc=btn.getBoundingClientRect(), mr=m.getBoundingClientRect();
+  let top=rc.bottom+6, left=rc.right-mr.width;
+  if(top+mr.height>innerHeight-12) top=rc.top-mr.height-6;
+  m.style.top=Math.max(12,top)+"px"; m.style.left=Math.max(12,Math.min(left,innerWidth-mr.width-12))+"px";
+  m.querySelector("button").focus();
+}
+$("#rmenu").addEventListener("keydown",e=>{
+  const items=[...$("#rmenu").querySelectorAll("button")], i=items.indexOf(document.activeElement);
+  if(e.key==="ArrowDown"||e.key==="ArrowUp"){ e.preventDefault(); items[(i+(e.key==="ArrowDown"?1:items.length-1))%items.length].focus(); }
+  if(e.key==="Escape"||e.key==="Tab"){ const b=menuBtn; closeMenu(); if(b&&e.key==="Escape") b.focus(); }
+});
+window.addEventListener("scroll",closeMenu,{passive:true}); window.addEventListener("resize",closeMenu);
+
 /* ================= события ================= */
 document.addEventListener("click",e=>{
   const t=e.target;
+  const mb=t.closest("[data-menu]"); if(mb){ e.preventDefault(); openMenu(mb); return; }
+  const inMenu=t.closest("#rmenu"); closeMenu(); if(inMenu&&!t.closest("[data-act]")) return;
   const go=t.closest("[data-go]"); if(go){e.preventDefault(); if(S.view==="group"){const g=G(S.gid); if(g&&g.unsaved){S.groups=S.groups.filter(x=>x!==g);} else if(g&&g.status==="DRAFT"){S.filter="DRAFT";}} S.view="list"; render(); window.scrollTo(0,0); return;}
   const cd=t.closest("[data-card]"); if(cd){const [gid,rid]=cd.dataset.card.split(":").map(Number); S.view="req"; S.gid=gid; S.rid=rid; render(); window.scrollTo(0,0); return;}
   const tg=t.closest("[data-toggle]"); if(tg){const g=G(+tg.dataset.toggle); g.open=!g.open; renderList(); return;}
@@ -926,6 +966,7 @@ document.addEventListener("click",e=>{
   }
 });
 document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"&&!$("#rmenu").hidden){closeMenu();return;}
   if(e.key==="Escape"&&$("#modalRoot").innerHTML){closeModal();return;}
   if((e.key==="Enter"||e.key===" ")&&e.target.matches('[role="button"]')){e.preventDefault(); e.target.click();}
 });
@@ -946,7 +987,7 @@ document.addEventListener("input",e=>{
 /* ================= харнесс: роль и сценарии ================= */
 const HINTS={
   list:"<b>Вкладка «Группы заявок» (§4.4):</b> одна строка на группу, раскрытие состава, фильтр по статусу группы, точный поиск по номеру группы или заявки. Черновики — только на вкладке «Черновики»; у каждого — прогресс заполнения и дата автоматического удаления, общего срока группы нет. Отправленная заявка открывает свою карточку.",
-  create:"<b>Создание (§4.1):</b> пустая форма не создаёт группу — черновик и группа сохраняются после первого ввода. «Добавить заявку» — пустая форма, «Скопировать заявку» — копия этой заявки без вложений. Индикатор сохранения и срок хранения — по T-66.",
+  create:"<b>Создание (§4.1):</b> пустая форма не создаёт группу — черновик и группа сохраняются после первого ввода. «Добавить заявку» — пустая форма; «Скопировать заявку» и «Удалить черновик» — в меню «⋮» карточки черновика (копия этой заявки без вложений). Индикатор сохранения и срок хранения — по T-66.",
   errors:"<b>Проверка (§4.2.2):</b> отправка всей группы блокируется, если хотя бы одна заявка невалидна; указаны заявка и поля, переход к полям. Ничего не переходит в «Новую».",
   confirm:"<b>Подтверждение (§4.2.3):</b> превью каждой заявки, сводка N специалистов в M регионах и явное подтверждение готовности всех заявок.",
   sent:"<b>Отправлена (§4.2.4, §5.1):</b> группа и все заявки — «Новая», номер группы YYMMDD_N и суффиксы _1, _2. Пока номер не присвоен — «Номер присваивается», это не ошибка.",
