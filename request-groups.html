@@ -638,6 +638,8 @@ function statusPill(st,wait){
   return st==="NEW"?'<span class="status s-new"><span class="dot"></span>Новая</span>':'<span class="status s-draft"><span class="dot"></span>Черновик</span>';
 }
 /* тег номера группы — только когда номер есть */
+/* статус заявки показываем, только если он отличается от статуса группы (в черновике группы все заявки — черновики) */
+function ownStatus(g,r){ return r.status===g.status?"":statusPill(r.status); }
 function groupRef(g){
   if(!g.ref||g.ref==="…") return "";
   return '<span class="ref"><span class="h">№</span>'+esc(g.ref)+'</span>';
@@ -742,7 +744,7 @@ function groupRow(g){
     '<div class="grp-kids">'+kids.map(r=>
       '<div class="kid-row"><button class="kid'+(S.hl===r.id?" hit":"")+'" '+(r.status==="NEW"?'data-card="'+g.id+":"+r.id+'"':'data-open="'+g.id+'" data-req="'+r.id+'"')+">"+childRef(g,r)+
       '<span class="t">'+esc(r.prof||"Заявка без профессии")+'</span><span class="m">'+reqMeta(r)+"</span>"+
-      '<span class="r">'+(r.priv?'<span class="lock">'+IC.lock+"только вам</span>":"")+(r.status==="DRAFT"?draftMeta(g,r,true):"")+statusPill(r.status)+"</span></button>"+
+      '<span class="r">'+(r.priv?'<span class="lock">'+IC.lock+"только вам</span>":"")+(r.status==="DRAFT"?draftMeta(g,r,true):"")+ownStatus(g,r)+"</span></button>"+
       (editableReq(g,r)?'<button class="kebab" data-menu="'+r.id+'" data-g="'+g.id+'" data-ctx="list" aria-haspopup="menu" aria-expanded="false" aria-label="Действия с черновиком">'+IC.kebab+"</button>":"")+"</div>"
     ).join("")+
       '<button class="btn link open-g" data-open="'+g.id+'">Открыть группу '+IC.arrow+"</button>"+
@@ -881,7 +883,7 @@ function reqHeadInner(g,r){
     it.push(r.saveErr?'<span class="sv err">Не сохранено</span> <button class="btn link" data-act="retry" data-r="'+r.id+'">Повторить</button>'
       :r.saving?"Сохранение…":"Сохранено: "+(sameDay?fmtT(t):fmtDM(t)+", "+fmtT(t)));
   }
-  return '<div class="rh1"><h2 class="req-title">'+esc(r.prof||"Новая заявка")+"</h2>"+statusPill(r.status)+
+  return '<div class="rh1"><h2 class="req-title">'+esc(r.prof||"Новая заявка")+"</h2>"+ownStatus(g,r)+
       (r.priv?'<span class="lock">'+IC.lock+"только вам</span>":"")+
       (editableReq(g,r)&&!g.unsaved?'<button class="kebab" data-menu="'+r.id+'" aria-haspopup="menu" aria-expanded="false" aria-label="Действия с черновиком">'+IC.kebab+"</button>":"")+"</div>"+
     (it.length?'<div class="rh2">'+it.join('<span aria-hidden="true">•</span>')+"</div>":"");
