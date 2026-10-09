@@ -134,12 +134,13 @@
   #gPanel .req-head{cursor:default; display:block}
   .rh1{display:flex; align-items:center; gap:8px 12px; flex-wrap:wrap}
   .rh1 .kebab{margin-left:auto}
-  .rh2{display:flex; flex-wrap:wrap; align-items:baseline; column-gap:6px; row-gap:2px; margin-top:6px; font-size:13px; color:var(--muted)}
-  .rh2 .bul{color:var(--dim)}
-  .rh2 .exp.soon{color:var(--warn)}
-  .rh2 .sv{color:var(--text-2)}
+  /* название заявки: меньше названия группы (h1 22–30px), больше секций формы (17px) */
+  #gPanel .req-title{font-size:22px; line-height:28px; font-weight:600; letter-spacing:-.3px; margin:0; white-space:normal}
+  .rh2{display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 4px; padding-top:8px; font-size:16px; line-height:22px; color:rgba(255,255,255,.6)}
+  .rh2 .soon{color:var(--warn)}
   .rh2 .sv.err{color:var(--err); font-weight:500}
-  .rh2 .btn.link{font-size:13px; padding:0 2px}
+  .rh2 .btn.link{font-size:16px; padding:0 2px}
+  @media (max-width:560px){ #gPanel .req-title{font-size:19px; line-height:24px} .rh2{font-size:14px; line-height:20px} }
   #gPanel .req-head:hover{background:none}
   .kid-row{display:flex; align-items:center; gap:6px}
   @media (max-width:560px){
@@ -867,15 +868,23 @@ function footer(g){
 
 /* ---------- карточка вложенной заявки ---------- */
 function reqHeadInner(g,r){
-  const reg=r.region?esc(r.region):'<i class="miss">регион не указан</i>';
-  const cnt=+r.count>0?esc(r.count)+" чел.":'<i class="miss">кол-во не указано</i>';
+  /* саммари под названием — поля по макету (Figma 7439:148694): заполнено • создано • удалится автоматически • сохранено */
+  const it=[], dr=r.status==="DRAFT"&&!g.unsaved;   /* до первого ввода индикатора нет */
   const ref=r.status==="NEW"?reqRef(g,r):null;
-  const dr=r.status==="DRAFT"&&!g.unsaved;   /* до первого ввода индикатора нет */
-  const line2=[ref?"№ "+esc(ref):"",reg,cnt,dr?"Заполнено "+progress(r)+" %":"",dr?expiryText(r):"",dr?saveState(r):""].filter(Boolean);
-  return '<div class="rh1"><span class="req-title">'+esc(r.prof||"Новая заявка")+"</span>"+statusPill(r.status)+
+  if(ref) it.push("№ "+esc(ref));
+  if(dr) it.push("Заполнено на "+progress(r)+"%");
+  if(!g.unsaved) it.push("Создано: "+fmtD(r.created));
+  if(dr){
+    const soon=expiry(r)-NOW<=7*DAY;
+    it.push('<span'+(soon?' class="soon"':"")+">Удалится автоматически: "+fmtD(expiry(r))+"</span>");
+    const t=r.savedAt||r.changed, sameDay=new Date(t).toDateString()===new Date().toDateString();
+    it.push(r.saveErr?'<span class="sv err">Не сохранено</span> <button class="btn link" data-act="retry" data-r="'+r.id+'">Повторить</button>'
+      :r.saving?"Сохранение…":"Сохранено: "+(sameDay?fmtT(t):fmtDM(t)+", "+fmtT(t)));
+  }
+  return '<div class="rh1"><h2 class="req-title">'+esc(r.prof||"Новая заявка")+"</h2>"+statusPill(r.status)+
       (r.priv?'<span class="lock">'+IC.lock+"только вам</span>":"")+
       (editableReq(g,r)&&!g.unsaved?'<button class="kebab" data-menu="'+r.id+'" aria-haspopup="menu" aria-expanded="false" aria-label="Действия с черновиком">'+IC.kebab+"</button>":"")+"</div>"+
-    '<div class="rh2">'+line2.join('<span class="bul" aria-hidden="true">·</span>')+"</div>";
+    (it.length?'<div class="rh2">'+it.join('<span aria-hidden="true">•</span>')+"</div>":"");
 }
 function fld(r,f){
   const k=f.k, id="f-"+r.id+"-"+k, bad=r.errs.includes(k);
