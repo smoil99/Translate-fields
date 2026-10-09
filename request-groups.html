@@ -131,7 +131,15 @@
   .rtab.add-tab:hover{background:var(--accent-dim)}
   #gPanel{scroll-margin-top:calc(var(--stack-h,200px) + 12px)}
   #gPanel{margin-top:12px}
-  #gPanel .req-head{cursor:default}
+  #gPanel .req-head{cursor:default; display:block}
+  .rh1{display:flex; align-items:center; gap:8px 12px; flex-wrap:wrap}
+  .rh1 .kebab{margin-left:auto}
+  .rh2{display:flex; flex-wrap:wrap; align-items:baseline; column-gap:6px; row-gap:2px; margin-top:6px; font-size:13px; color:var(--muted)}
+  .rh2 .bul{color:var(--dim)}
+  .rh2 .exp.soon{color:var(--warn)}
+  .rh2 .sv{color:var(--text-2)}
+  .rh2 .sv.err{color:var(--err); font-weight:500}
+  .rh2 .btn.link{font-size:13px; padding:0 2px}
   #gPanel .req-head:hover{background:none}
   .kid-row{display:flex; align-items:center; gap:6px}
   @media (max-width:560px){
@@ -859,10 +867,15 @@ function footer(g){
 
 /* ---------- карточка вложенной заявки ---------- */
 function reqHeadInner(g,r){
-  return childRef(g,r)+
-    '<span class="req-title">'+esc(r.prof||"Новая заявка")+'</span><span class="req-meta">'+reqMeta(r)+"</span>"+
-    '<span class="req-right">'+(r.priv?'<span class="lock">'+IC.lock+"только вам</span>":"")+draftMeta(g,r)+statusPill(r.status)+
-    (editableReq(g,r)&&!g.unsaved?'<button class="kebab" data-menu="'+r.id+'" aria-haspopup="menu" aria-expanded="false" aria-label="Действия с черновиком">'+IC.kebab+"</button>":"")+"</span>";
+  const reg=r.region?esc(r.region):'<i class="miss">регион не указан</i>';
+  const cnt=+r.count>0?esc(r.count)+" чел.":'<i class="miss">кол-во не указано</i>';
+  const ref=r.status==="NEW"?reqRef(g,r):null;
+  const dr=r.status==="DRAFT"&&!g.unsaved;   /* до первого ввода индикатора нет */
+  const line2=[ref?"№ "+esc(ref):"",reg,cnt,dr?"Заполнено "+progress(r)+" %":"",dr?expiryText(r):"",dr?saveState(r):""].filter(Boolean);
+  return '<div class="rh1"><span class="req-title">'+esc(r.prof||"Новая заявка")+"</span>"+statusPill(r.status)+
+      (r.priv?'<span class="lock">'+IC.lock+"только вам</span>":"")+
+      (editableReq(g,r)&&!g.unsaved?'<button class="kebab" data-menu="'+r.id+'" aria-haspopup="menu" aria-expanded="false" aria-label="Действия с черновиком">'+IC.kebab+"</button>":"")+"</div>"+
+    '<div class="rh2">'+line2.join('<span class="bul" aria-hidden="true">·</span>')+"</div>";
 }
 function fld(r,f){
   const k=f.k, id="f-"+r.id+"-"+k, bad=r.errs.includes(k);
@@ -907,18 +920,15 @@ function reqBody(g,r,ed){
     h+=viewHtml(r);
   }
   const canCopy=!g.unsaved&&((g.status==="DRAFT"&&g.author===S.role)||(g.status==="NEW"&&admin&&g.ref!=="…"));
-  h+='<div class="req-acts">';
-  /* футер черновика: «Удалить черновик» — в левом углу (как в форме «Создать заявку») */
-  if(ed&&g.unsaved) h+='<span class="note">Черновик появится после первого ввода — тогда станут доступны дублирование и удаление.</span>';
-  else if(ed){
-    h+='<button class="btn sm" data-act="delReq" data-r="'+r.id+'">'+IC.trash+"Удалить черновик</button>";
-    h+=g.status==="NEW"?'<span class="note">Черновик администратора: клиент увидит заявку только после её отдельной отправки.</span>':'<span class="sp"></span>';
-  }
-  else h+='<span class="note">'+(admin?"Отправленная заявка. Правка опубликованных данных — по смежному BRD.":"Отправленную заявку клиент не меняет — правки вносит менеджер РРУ.")+"</span>";
-  if(r.status==="NEW"&&r.n&&g.ref!=="…") h+='<button class="btn link" data-card="'+g.id+":"+r.id+'">Открыть карточку заявки '+IC.arrow+"</button>";
-  if(canCopy&&!ed) h+='<button class="btn sm" data-act="copyReq" data-r="'+r.id+'">'+IC.copy+"Дублировать заявку</button>";
-  if(ed&&g.status==="NEW") h+='<button class="btn sm primary" data-act="sendChild" data-r="'+r.id+'">'+IC.send+"Отправить заявку</button>";
-  h+="</div>";
+  /* футер заявки; дублирование и удаление черновика — в «⋮» шапки заявки */
+  let f="";
+  if(ed&&g.unsaved) f+='<span class="note">Черновик появится после первого ввода — тогда станут доступны дублирование и удаление.</span>';
+  else if(ed&&g.status==="NEW") f+='<span class="note">Черновик администратора: клиент увидит заявку только после её отдельной отправки.</span>';
+  else if(!ed) f+='<span class="note">'+(admin?"Отправленная заявка. Правка опубликованных данных — по смежному BRD.":"Отправленную заявку клиент не меняет — правки вносит менеджер РРУ.")+"</span>";
+  if(r.status==="NEW"&&r.n&&g.ref!=="…") f+='<button class="btn link" data-card="'+g.id+":"+r.id+'">Открыть карточку заявки '+IC.arrow+"</button>";
+  if(canCopy&&!ed) f+='<button class="btn sm" data-act="copyReq" data-r="'+r.id+'">'+IC.copy+"Дублировать заявку</button>";
+  if(ed&&g.status==="NEW") f+='<button class="btn sm primary" data-act="sendChild" data-r="'+r.id+'">'+IC.send+"Отправить заявку</button>";
+  if(f) h+='<div class="req-acts">'+f+"</div>";
   return h;
 }
 
@@ -1077,7 +1087,8 @@ function openMenu(btn){
   closeMenu();
   m.innerHTML=btn.dataset.ctx==="list"
     ? '<button role="menuitem" class="del" data-act="delReq" data-g="'+btn.dataset.g+'" data-r="'+rid+'">'+IC.trash+'<span>Удалить черновик<small>С подтверждением; остальные заявки сохранятся</small></span></button>'
-    : '<button role="menuitem" data-act="copyReq" data-r="'+rid+'">'+IC.copy+'<span>Дублировать заявку<small>Независимый дубль этой заявки в той же группе, без вложений</small></span></button>';
+    : '<button role="menuitem" data-act="copyReq" data-r="'+rid+'">'+IC.copy+'<span>Дублировать заявку<small>Независимый дубль этой заявки в той же группе, без вложений</small></span></button>'+
+      '<button role="menuitem" class="del" data-act="delReq" data-r="'+rid+'">'+IC.trash+'<span>Удалить черновик<small>С подтверждением; остальные заявки сохранятся</small></span></button>';
   m.hidden=false; menuBtn=btn; btn.setAttribute("aria-expanded","true");
   const rc=btn.getBoundingClientRect(), mr=m.getBoundingClientRect();
   let top=rc.bottom+6, left=rc.right-mr.width;
